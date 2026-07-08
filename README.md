@@ -16,7 +16,7 @@ recommendation-bubble effect.
 Spotify's own "Discover Weekly" and "Release Radar" recommend primarily
 artists who are known to work — i.e. popular. This project flips the
 logic around: **the less heard, the more interesting the discovery** —
-> **Status:** v0.1.0-dev — FP-0/1/1b/2/3/4 ✅ | FP-5 next
+> **Status:** v0.1.0-dev — FP-0/1/1b/2/3/4/5 ✅ | FP-6 next
 
 ## 🧩 Features
 
@@ -26,9 +26,9 @@ logic around: **the less heard, the more interesting the discovery** —
 - ✅ **Last.fm discovery** — tag-based top artists, period filter, getSimilar graph expansion
 - ✅ **ListenBrainz Labs** — ML-based similar artists, no Spotify popularity bias
 - ✅ **Ranking algorithm** — 6-component score (genre + emerging + features + discovery + geo − mainstream)
-- ✅ **94/94 tests PASS**
-- 🚧 **Playlist builder** (FP-5) — N best artists, 2-3 tracks per artist, write to Spotify
-- 📋 **Typer CLI** (FP-6)
+- ✅ **Playlist builder** — resolve candidates → fetch tracks → shuffle no-adjacent → write to Spotify via new endpoints
+- ✅ **113/113 tests PASS**
+- 🚧 **Typer CLI** (FP-6) — user-facing entry point
 - 📋 **MusicBrainz, Bandcamp, Reddit** (FP-3b/c/d, backlog)
 
 ## ⚠️ Critical: Spotify's Feb 2026 API changes
@@ -111,14 +111,15 @@ pytest tests/ -v
 ## 📊 Test coverage
 
 ```
-tests/test_api_v2.py       — 15/15 PASS  (Spotify API v2 wrapper)
-tests/test_profile.py      — 16/16 PASS  (FP-2: User profile builder)
-tests/test_lastfm.py       — 10/10 PASS  (FP-3: Last.fm discovery)
-tests/test_listenbrainz.py — 15/15 PASS  (FP-3: ListenBrainz Labs)
-tests/test_ranking.py      — 38/38 PASS  (FP-4: Ranking algorithm)
+tests/test_api_v2.py            — 15/15 PASS  (Spotify API v2 wrapper)
+tests/test_profile.py           — 16/16 PASS  (FP-2: User profile builder)
+tests/test_lastfm.py            — 10/10 PASS  (FP-3: Last.fm discovery)
+tests/test_listenbrainz.py      — 15/15 PASS  (FP-3: ListenBrainz Labs)
+tests/test_ranking.py           — 38/38 PASS  (FP-4: Ranking algorithm)
+tests/test_playlist_builder.py  — 19/19 PASS  (FP-5: Playlist builder)
 ```
 
-Total **94/94 PASS** in under 1.5 seconds.
+Total **113/113 PASS** in under 5 seconds.
 
 ## 📚 Important links
 
