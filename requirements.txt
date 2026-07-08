@@ -23,3 +23,4 @@ pytest-asyncio>=0.24.0
 pytest-mock>=3.14.0
 vcrpy>=6.0.0             # HTTP-kutsujen tallennus testeissä
 
+apscheduler>=3.10.0      # FP-9 daemon mode scheduler

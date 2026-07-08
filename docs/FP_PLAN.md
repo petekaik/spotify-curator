@@ -38,7 +38,7 @@ Just like Clairvoyant-Optics project convention.
 | **FP-6** | Typer CLI | CLI | 8 | 2 | 4.00 | ✅ Done, 17/17 PASS |
 | **FP-7** | Integration tests with vcrpy cassettes | Test | 8 | 3 | 2.67 | ✅ Done, 7/7 PASS |
 | **FP-8** | Web UI (FastAPI, lightweight) | UI | 5 | 5 | 1.00 |
-| **FP-9** | Daemon mode (daily refresh) | Infra | 5 | 8 | 0.63 |
+| **FP-9** | Daemon mode (daily refresh) | Infra | 5 | 8 | 0.63 | ✅ Done, 26/26 PASS |
 | **FP-10** | GH Actions CI | Infra | 5 | 2 | 2.50 |
 
 **FP-3c Bandcamp — DEFERRED indefinitely.** Verified 2026-07-08 that:
