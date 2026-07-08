@@ -22,8 +22,9 @@ Just like Clairvoyant-Optics project convention.
 | **FP-0** | Project scaffold (dirs, README, docs) | Infra | 8 | 1 | 8.00 | ✅ Done |
 | **FP-1** | OAuth auth + token cache | Spotify | 13 | 2 | 6.50 | ✅ Done |
 | **FP-1b** | API v2 wrapper (Feb 2026 endpoints) | Spotify | 13 | 3 | 4.33 | ✅ Done, 15/15 PASS |
-| **FP-2** | User profile builder | Analyzer | 13 | 3 | 4.33 | 🚧 In progress |
-| **FP-3** | Discovery: Last.fm + ListenBrainz | Discovery | 8 | 5 | 1.60 | Open |
+| **FP-2** | User profile builder | Analyzer | 13 | 3 | 4.33 | ✅ Done, 16/16 PASS |
+| **FP-3** | Discovery: Last.fm + ListenBrainz | Discovery | 8 | 5 | 1.60 | ✅ Done, 25/25 PASS |
+| **FP-4** | Ranking algorithm | Discovery | 13 | 5 | 2.60 | Open |
 
 ## Backlog (priority order)
 

@@ -16,23 +16,20 @@ recommendation-bubble effect.
 Spotify's own "Discover Weekly" and "Release Radar" recommend primarily
 artists who are known to work — i.e. popular. This project flips the
 logic around: **the less heard, the more interesting the discovery** —
-as long as it fits the user's genre profile.
+> **Status:** v0.1.0-dev — FP-0/1/1b/2/3 ✅ | FP-4 next
 
-## 🧩 Features (FP-2 complete)
+## 🧩 Features
 
 - ✅ **OAuth authentication** — Authorization Code Flow, token cache
 - ✅ **Spotify API v2 wrapper** — handles Feb 2026 changes
-  (`/me/library`, `/playlists/{id}/items`, workaround for removed
-  `/artists/{id}/top-tracks`)
-- ✅ **User profile builder** — top artists + top tracks across three
-  time windows (short/medium/long term), weighted genre and artist
-  analysis, Parquet cache
-- ✅ **31/31 tests PASS** (pytest)
-- 🚧 **Discovery modules** (FP-3) — Last.fm, ListenBrainz, MusicBrainz, Bandcamp, Reddit
-- 📋 **Ranking algorithm** (FP-4) — genre + emerging + features + mainstream penalty
-- 📋 **Playlist builder** (FP-5) — N best artists, 2-3 tracks per artist
+- ✅ **User profile builder** — top artists + top tracks across 3 time windows, weighted genre analysis, Parquet cache
+- ✅ **Last.fm discovery** — tag-based top artists, period filter (7day→overall), getSimilar graph expansion
+- ✅ **ListenBrainz Labs** — ML-based similar artists, no Spotify popularity bias
+- ✅ **56/56 tests PASS**
+- 🚧 **MusicBrainz, Bandcamp, Reddit** (FP-3b/c/d, backlog)
+- 📋 **Ranking algorithm** (FP-4)
+- 📋 **Playlist builder** (FP-5)
 - 📋 **Typer CLI** (FP-6)
-- 📋 **Web UI** (FP-8, backlog)
 
 ## ⚠️ Critical: Spotify's Feb 2026 API changes
 
@@ -114,11 +111,13 @@ pytest tests/ -v
 ## 📊 Test coverage
 
 ```
-tests/test_api_v2.py    — 15/15 PASS  (Spotify API v2 wrapper)
-tests/test_profile.py   — 16/16 PASS  (FP-2: User profile builder)
+tests/test_api_v2.py       — 15/15 PASS  (Spotify API v2 wrapper)
+tests/test_profile.py      — 16/16 PASS  (FP-2: User profile builder)
+tests/test_lastfm.py       — 10/10 PASS  (FP-3: Last.fm discovery)
+tests/test_listenbrainz.py — 15/15 PASS  (FP-3: ListenBrainz Labs)
 ```
 
-Total **31/31 PASS** in under a second.
+Total **56/56 PASS** in under a second.
 
 ## 📚 Important links
 
