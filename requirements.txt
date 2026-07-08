@@ -5,6 +5,7 @@ python-dotenv>=1.0.0     # .env-tuki
 
 # Discovery sources
 musicbrainzngs>=0.7.1    # MusicBrainz client
+feedparser>=6.0.12      # Reddit RSS parsing
 httpx>=0.27.0            # Async HTTP, Bandcamp-scraping
 selectolax>=0.3.21       # Fast HTML parser (Bandcamp)
 
