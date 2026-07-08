@@ -16,22 +16,68 @@ recommendation-bubble effect.
 Spotify's own "Discover Weekly" and "Release Radar" recommend primarily
 artists who are known to work — i.e. popular. This project flips the
 logic around: **the less heard, the more interesting the discovery** —
-> **Status:** v0.1.0-dev — FP-0/1/1b/2/3/4/5/6 ✅ | v0.1.0 ready for release
+> **Status:** v0.2.0-dev — Docker + Hermes skill + tools ready, **FP-3b next**
 
-## 🧩 Features
+## 🧩 What's new in v0.2.0
 
-- ✅ **OAuth authentication** — Authorization Code Flow, token cache
-- ✅ **Spotify API v2 wrapper** — handles Feb 2026 changes
-- ✅ **User profile builder** — top artists + top tracks across 3 time windows, weighted genre analysis, Parquet cache
-- ✅ **Last.fm discovery** — tag-based top artists, period filter, getSimilar graph expansion
-- ✅ **ListenBrainz Labs** — ML-based similar artists, no Spotify popularity bias
-- ✅ **Ranking algorithm** — 6-component score (genre + emerging + features + discovery + geo − mainstream)
-- ✅ **Playlist builder** — resolve candidates → fetch tracks → shuffle no-adjacent → write to Spotify via new endpoints
-- ✅ **Typer CLI** — `spotify-curator auth | profile | discover | playlist`
-- ✅ **130/130 tests PASS**
-- 📋 **MusicBrainz, Bandcamp, Reddit** (FP-3b/c/d, backlog)
-- 📋 **Integration tests with vcrpy** (FP-7)
-- 📋 **Daemon mode** (FP-9)
+- ✅ **Docker deployment** — `deploy/Dockerfile` + `deploy/compose.yml`
+  - Hermes Agent as the runtime inside the container
+  - Bind-mount volumes for live-edit dev
+  - Headless OAuth via `deploy/scripts/auth_on_host.sh` (run on Mac, not in container)
+  - `HERMES_PROFILE=spotify-curator` for isolated config
+  - Port-mapped: 8642 (Hermes API), 8788 (future IPC)
+  - **Portable to QNAP** — same compose works on any Docker host
+- ✅ **Hermes skill** — `skills/spotify-curator/SKILL.md`
+  - 6 tools exposed to other Hermes agents:
+    - `spotify_curator_status` — auth + profile health check
+    - `spotify_curator_refresh_profile` — rebuild taste profile
+    - `spotify_curator_discover` — find emerging artists (no write)
+    - `spotify_curator_generate_mood` — single-mood playlist
+    - `spotify_curator_generate_weekly` — full 6-mood weekly digest
+    - `spotify_curator_get_reports` — past run history
+  - Mood taxonomy: cheerful, calming, stimulating, focus, melancholic, energetic
+- ✅ **154/154 tests PASS** (24 new for hermes_skill tools)
+- 📋 **FP-3b** MusicBrainz discovery (next)
+- 📋 **FP-3c** Bandcamp scraping
+- 📋 **FP-3d** Reddit community mining
+- 📋 **FP-7** Integration tests with vcrpy cassettes
+- 📋 **FP-9** Daemon mode + scheduled weekly digest
+
+## 🚀 Quick start (Docker)
+
+```bash
+cd ~/projects/spotify-curator/deploy
+cp .env.example .env
+nano .env  # Fill in API keys
+
+# Run OAuth on host Mac (one-time, browser required)
+./scripts/auth_on_host.sh
+
+# Build and start
+docker compose build
+docker compose up -d
+
+# Talk to the containerized agent
+docker compose exec hermes-spotify-curator hermes chat -q "show me this week's calming picks"
+```
+
+The container runs Hermes Agent with the spotify-curator skill preloaded.
+It listens on port 8642 (Hermes API) and 8788 (future IPC).
+
+## 📊 Test coverage
+
+```
+tests/test_api_v2.py            — 15/15 PASS
+tests/test_profile.py           — 16/16 PASS
+tests/test_lastfm.py            — 10/10 PASS
+tests/test_listenbrainz.py      — 15/15 PASS
+tests/test_ranking.py           — 38/38 PASS
+tests/test_playlist_builder.py  — 19/19 PASS
+tests/test_cli.py               — 17/17 PASS
+tests/test_hermes_skill.py      — 24/24 PASS  ← NEW: Hermes tools
+```
+
+Total **154/154 PASS** in under 5 seconds.
 
 ## 🚀 Quick start
 

@@ -1,9 +1,34 @@
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 .venv/
+venv/
 .env
 data/cache/*.json
 data/cache/*.parquet
 *.log
 .DS_Store
 .pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Hermes state (regenerated on first run)
+deploy/data/
+
+# Spotify OAuth tokens (NEVER commit)
+deploy/secrets/spotify_cache
+deploy/secrets/spotify_cache.json
+deploy/secrets/*.json
+!deploy/secrets/*.example.json
+
+# Local user data
+.local/
+*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

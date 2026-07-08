@@ -1,0 +1,116 @@
+# Docker Compose for spotify-curator
+#
+# Architecture:
+#   Host (Mac)                              Container
+#   ─────────                               ────────
+#   ~/projects/spotify-curator/deploy/
+#     ├── .env          ─── env_file ───▶   container env
+#     ├── data/         ◀── bind ───▶       /opt/data (HERMES_HOME)
+#     ├── secrets/      ◀── bind:ro ──▶     /opt/secrets (Spotify tokens)
+#     └── scripts/      ◀── bind ───▶       /opt/project/scripts
+#
+#   Spotify OAuth is a one-time flow that MUST happen on the host Mac
+#   (browser-based). Tokens are exported to ./secrets/ and mounted read-only
+#   into the container. The container never opens a browser.
+#
+# Networking: bridge mode with explicit port mappings.
+#   - 8642: Hermes API server (WebUI / API access)
+#   - 8788: spotify-curator IPC (custom; future FP-9 use)
+#   - 9090: Prometheus-style metrics (optional, FP-9+)
+#
+# To run:
+#   cd ~/projects/spotify-curator/deploy
+#   cp .env.example .env       # then edit with your API keys
+#   cp secrets/spotify_token.example.json secrets/spotify_token.json
+#   docker compose build
+#   docker compose up -d
+#   docker compose logs -f hermes-spotify-curator
+
+services:
+  hermes-spotify-curator:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: spotify-curator:latest
+    container_name: hermes-spotify-curator
+    hostname: hermes-spotify-curator
+
+    # CRITICAL: env_file injects all .env vars into the container.
+    # This is the ONLY way the container sees API keys, tokens, etc.
+    env_file:
+      - .env
+
+    # Override HOME and HERMES_HOME to point at the mounted data dir
+    environment:
+      HOME: /opt/data
+      HERMES_HOME: /opt/data
+      HERMES_PROFILE: spotify-curator
+      # Preload the spotify-curator skill on every Hermes startup
+      HERMES_PRELOAD_SKILLS: "spotify-curator"
+      # Prevent any browser-opening code paths inside the container
+      SPOTIPY_OPEN_BROWSER: "false"
+      # Spotify Curator module needs Python 3.12+ for type hints
+      PYTHONUNBUFFERED: "1"
+      # Tell Spotify Curator where the runtime config lives
+      SPOTIFY_CURATOR_HOME: /opt/data/spotify-curator
+
+    # Volume mounts — single source of truth, host-managed
+    volumes:
+      # Persistent Hermes state (config, sessions, skills cache, logs, memories)
+      # Initialized on first run; survives container recreation
+      - ./data:/opt/data
+
+      # Spotify OAuth tokens (created on host, mounted read-only)
+      # This is the bridge between local-Mac OAuth flow and headless container
+      - ./secrets:/opt/secrets:ro
+
+      # Live project code — bind mount for dev iteration without rebuild
+      # (Dockerfile COPYs are also there for first-build; bind-mount wins at runtime)
+      - ../src:/opt/project/src
+      - ../skills:/opt/project/skills
+      - ../docs:/opt/project/docs
+      - ./scripts:/opt/project/scripts
+
+    # Port mappings
+    ports:
+      - "127.0.0.1:8642:8642"   # Hermes API server (localhost-only by default)
+      - "127.0.0.1:8788:8788"   # spotify-curator IPC (FP-9, when implemented)
+      # Remove "127.0.0.1:" to expose to LAN; add auth if exposing publicly
+
+    # Resource limits — adjust to your Mac's capacity
+    # Hermes + spotify-curator together are light (Python + a few HTTP calls)
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "1.0"
+        reservations:
+          memory: 512M
+          cpus: "0.25"
+
+    # Auto-restart unless explicitly stopped
+    restart: unless-stopped
+
+    # Healthcheck matches Dockerfile
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8642/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Use a named network for future expansion (e.g. add Ollama, Postgres)
+    networks:
+      - hermes-net
+
+    # Logging
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  hermes-net:
+    name: hermes-net
+    driver: bridge
