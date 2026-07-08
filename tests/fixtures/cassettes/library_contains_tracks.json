@@ -1,0 +1,1 @@
+{"version": 1, "interactions": [{"request": {"method": "GET", "uri": "https://api.spotify.com/v1/me/library/contains?type=track&ids=track1,track2"}, "response": {"status": {"code": 200, "message": "OK"}, "headers": {"Content-Type": ["application/json"]}, "body": "[true, false]"}}]}

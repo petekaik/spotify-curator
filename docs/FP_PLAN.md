@@ -36,7 +36,7 @@ Just like Clairvoyant-Optics project convention.
 | **FP-4** | Ranking algorithm | Discovery | 13 | 5 | 2.60 | ✅ Done, 38/38 PASS |
 | **FP-5** | Playlist builder (write to Spotify) | Playlist | 13 | 3 | 4.33 | ✅ Done, 19/19 PASS |
 | **FP-6** | Typer CLI | CLI | 8 | 2 | 4.00 | ✅ Done, 17/17 PASS |
-| **FP-7** | Integration tests with vcrpy cassettes | Test | 8 | 3 | 2.67 | Open |
+| **FP-7** | Integration tests with vcrpy cassettes | Test | 8 | 3 | 2.67 | ✅ Done, 7/7 PASS |
 | **FP-8** | Web UI (FastAPI, lightweight) | UI | 5 | 5 | 1.00 |
 | **FP-9** | Daemon mode (daily refresh) | Infra | 5 | 8 | 0.63 |
 | **FP-10** | GH Actions CI | Infra | 5 | 2 | 2.50 |

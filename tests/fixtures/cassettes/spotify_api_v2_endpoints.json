@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "interactions": [
+    {
+      "request": {
+        "method": "GET",
+        "uri": "https://api.spotify.com/v1/me/library/contains?type=track&ids=track1,track2",
+        "body": null
+      },
+      "response": {
+        "status": {"code": 200, "message": "OK"},
+        "headers": {"Content-Type": ["application/json"]},
+        "body": "[true, false]"
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "uri": "https://api.spotify.com/v1/playlists/playlist123/items?limit=50",
+        "body": null
+      },
+      "response": {
+        "status": {"code": 200, "message": "OK"},
+        "headers": {"Content-Type": ["application/json"]},
+        "body": "{\"items\": [{\"item\": {\"id\": \"track1\", \"name\": \"Test Track 1\", \"uri\": \"spotify:track:track1\", \"duration_ms\": 180000, \"artists\": [{\"id\": \"artist1\", \"name\": \"Artist 1\"}], \"album\": {\"id\": \"album1\", \"name\": \"Album 1\"}}, \"added_at\": \"2026-07-01T12:00:00Z\"}], \"total\": 1, \"limit\": 50, \"offset\": 0}"
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "uri": "https://api.spotify.com/v1/artists/artist1/albums?limit=10",
+        "body": null
+      },
+      "response": {
+        "status": {"code": 200, "message": "OK"},
+        "headers": {"Content-Type": ["application/json"]},
+        "body": "{\"items\": [{\"id\": \"album1\", \"name\": \"Album 1\", \"uri\": \"spotify:album:album1\", \"release_date\": \"2026-01-15\", \"total_tracks\": 12}], \"total\": 1}"
+      }
+    }
+  ]
+}
