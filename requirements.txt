@@ -1,21 +1,20 @@
 # Core
 spotipy>=2.25.0          # Spotify Web API wrapper
-requests>=2.31.0         # HTTP Last.fm/Echonest-yhteyksiin
+requests>=2.31.0         # Last.fm, ListenBrainz HTTP-kutsut
 python-dotenv>=1.0.0     # .env-tuki
+
+# Discovery sources
+musicbrainzngs>=0.7.1    # MusicBrainz client
+httpx>=0.27.0            # Async HTTP, Bandcamp-scraping
+selectolax>=0.3.21       # Fast HTML parser (Bandcamp)
+
+# Data
+pandas>=2.2.0            # Data-analyysi (käyttäjäprofiili)
+pyarrow>=18.0.0          # Parquet-välimuisti
 
 # CLI
 typer>=0.12.0            # Modernit CLI-komennot
 rich>=13.7.0             # Kaunis konsolioutput
-httpx>=0.27.0            # Async HTTP
-
-# Web (valinnainen - yksinkertainen kevytrakenteinen)
-fastapi>=0.115.0         # Web UI -kehys (kevyt)
-uvicorn>=0.32.0
-jinja2>=3.1.4
-
-# Data
-pandas>=2.2.0            # Data-analyysi (käyttäjäprofiili)
-pyarrow>=18.0.0          # Parquet-tuki (välimuisti)
 
 # Testing
 pytest>=8.3.0
