@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spotify-curator"
+version = "0.1.0"
+description = "Find emerging artists and build Spotify playlists, without the popularity-bubble effect"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = [
+    "spotipy>=2.25.0",
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
+    "musicbrainzngs>=0.7.1",
+    "httpx>=0.27.0",
+    "selectolax>=0.3.21",
+    "pandas>=2.2.0",
+    "pyarrow>=18.0.0",
+    "typer>=0.12.0",
+    "rich>=13.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-mock>=3.14.0",
+    "vcrpy>=6.0.0",
+]
+
+[project.scripts]
+spotify-curator = "src.cli.main:main"
+
+[tool.setuptools.packages.find]
+include = ["src*"]
