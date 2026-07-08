@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-08
 **Version:** v0.1.0
-**Status:** FP-0/FP-1/FP-1b complete, FP-2 in progress
+**Status:** FP-0/FP-1/FP-1b/FP-2 complete, FP-3 in progress
 
 ## 1. Context
 
@@ -25,12 +25,12 @@ interesting the discovery** — as long as it fits the user's taste profile.
   target removed endpoints. Workaround: call `sp._get/_post/_put/_delete`
   directly with new paths. Our `api_v2.py` encapsulates this.
 
-- **User account is single** — Pomo is the only intended user. We don't
+- **User account is single** — one intended user. We don't
   need multi-tenant support, just a clean personal CLI.
 
 - **No web UI required for v1** — CLI is enough. Web UI is FP-8 backlog.
 
-### User profile (Pomo's listening)
+### User profile (sample listener)
 
 - **Primary:** indie rock, post-rock, dream pop, shoegaze
 - **Secondary:** electronic, ambient, IDM
@@ -141,7 +141,7 @@ spotify-curator/
   - `search` (with cap at 10)
 - **Test coverage:** 15/15 PASS, including regressions that fail if old paths are used
 
-### 3.3 User profile (`src/analyzer/profile.py`) — **FP-2 in progress**
+### 3.3 User profile (`src/analyzer/profile.py`) — **FP-2 complete**
 
 - **Responsibility:** build a weighted taste profile from Spotify listening history
 - **Inputs:**
@@ -218,7 +218,7 @@ covering a different signal:
 
 - No public API but tag-pages and `bandcamp.com/tag/<tag>/discover` are HTML-scrapable
 - Specifically good for: post-rock, ambient, drone, experimental, vaporwave,
-  bedroom-pop, lo-fi — exactly the genres Pomo likes
+  bedroom-pop, lo-fi — niche genres this project targets
 - Use `httpx` + `selectolax` (fast HTML parser) — **NOT** BeautifulSoup
   (too slow for scraping)
 - Identify emerging artists: those with < 1000 followers on their page
@@ -227,8 +227,8 @@ covering a different signal:
 #### 3.5.5 Reddit (`reddit.py`) — NEW for FP-3
 
 - **No auth needed** for public JSON: append `.json` to any URL
-- `r/indieheads` "Fresh Indie Rock 2026" weekly threads → mining thread titles
-- `r/postrock`, `r/shoegaze`, `r/dreampop` (relevant to Pomo)
+- `r/indieheads` "Fresh Indie Rock" weekly threads → mining thread titles
+- `r/postrock`, `r/shoegaze`, `r/dreampop` (relevant niche genres)
 - `r/listentothis` for "obscure" filter
 - `r/Bandcamp` for new releases
 - Pattern: weekly "FRESH" threads are goldmines, just regex the artist names
@@ -307,7 +307,7 @@ spotify-curator playlist sync <id>      # update existing (FP-7+)
 | Persistence | Parquet | Fast, type-safe, schema-less, plays well with pandas |
 | CLI | Typer + Rich | Modern, type-safe, great defaults |
 | Test framework | pytest + vcrpy | vcrpy records API calls for deterministic tests |
-| License | MIT | Same as other Pomo projects |
+| License | MIT | FOSS |
 
 ### Concurrency model
 

@@ -24,7 +24,7 @@ def mock_api():
     sp = MagicMock()
     # /me
     sp._get.side_effect = lambda path, **kw: (
-        {"id": "user123", "display_name": "Pomo"} if path == "me"
+        {"id": "user123", "display_name": "TestUser"} if path == "me"
         else None
     )
     api = MagicMock()
