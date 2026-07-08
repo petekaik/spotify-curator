@@ -26,6 +26,27 @@ Just like Clairvoyant-Optics project convention.
 | **FP-3** | Discovery: Last.fm + ListenBrainz | Discovery | 8 | 5 | 1.60 | ✅ Done, 25/25 PASS |
 | **FP-4** | Ranking algorithm | Discovery | 13 | 5 | 2.60 | Open |
 
+## Status (2026-07-08)
+
+| ID | Title | Status |
+|---|---|---|
+| FP-1 | OAuth auth | ✅ |
+| FP-2 | User profile builder | ✅ |
+| FP-3 | Discovery: Last.fm + ListenBrainz | ✅ |
+| FP-3b | MusicBrainz | ✅ |
+| FP-3c | Bandcamp | ⚠️ DEFERRED (no API) |
+| FP-3d | Reddit | ✅ |
+| FP-4 | Ranking algorithm | ✅ |
+| FP-5 | Playlist builder | ✅ |
+| FP-6 | Typer CLI | ✅ |
+| FP-7 | vcrpy integration tests | ✅ |
+| FP-8 | Web UI | Open |
+| FP-9 | Daemon mode | ✅ |
+| FP-10 | GH Actions CI | Open |
+| FP-11 | First-run tutorial | Open |
+
+**Total: 242/242 tests PASS**
+
 ## Backlog (priority order)
 
 | ID | Title | Area | BV | TC | WSJF |
