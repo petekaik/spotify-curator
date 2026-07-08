@@ -16,20 +16,20 @@ recommendation-bubble effect.
 Spotify's own "Discover Weekly" and "Release Radar" recommend primarily
 artists who are known to work — i.e. popular. This project flips the
 logic around: **the less heard, the more interesting the discovery** —
-> **Status:** v0.1.0-dev — FP-0/1/1b/2/3 ✅ | FP-4 next
+> **Status:** v0.1.0-dev — FP-0/1/1b/2/3/4 ✅ | FP-5 next
 
 ## 🧩 Features
 
 - ✅ **OAuth authentication** — Authorization Code Flow, token cache
 - ✅ **Spotify API v2 wrapper** — handles Feb 2026 changes
 - ✅ **User profile builder** — top artists + top tracks across 3 time windows, weighted genre analysis, Parquet cache
-- ✅ **Last.fm discovery** — tag-based top artists, period filter (7day→overall), getSimilar graph expansion
+- ✅ **Last.fm discovery** — tag-based top artists, period filter, getSimilar graph expansion
 - ✅ **ListenBrainz Labs** — ML-based similar artists, no Spotify popularity bias
-- ✅ **56/56 tests PASS**
-- 🚧 **MusicBrainz, Bandcamp, Reddit** (FP-3b/c/d, backlog)
-- 📋 **Ranking algorithm** (FP-4)
-- 📋 **Playlist builder** (FP-5)
+- ✅ **Ranking algorithm** — 6-component score (genre + emerging + features + discovery + geo − mainstream)
+- ✅ **94/94 tests PASS**
+- 🚧 **Playlist builder** (FP-5) — N best artists, 2-3 tracks per artist, write to Spotify
 - 📋 **Typer CLI** (FP-6)
+- 📋 **MusicBrainz, Bandcamp, Reddit** (FP-3b/c/d, backlog)
 
 ## ⚠️ Critical: Spotify's Feb 2026 API changes
 
