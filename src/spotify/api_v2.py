@@ -61,7 +61,7 @@ class SpotifyAPIv2:
         # Endpoint: PUT /me/library
         self._sp._put(
             "me/library",
-            body={"ids": item_ids, "type": item_type},
+            payload={"ids": item_ids, "type": item_type},
         )
 
     def library_remove(self, item_type: str, item_ids: list[str]) -> None:
@@ -76,7 +76,7 @@ class SpotifyAPIv2:
         # Endpoint: DELETE /me/library
         self._sp._delete(
             "me/library",
-            body={"ids": item_ids, "type": item_type},
+            payload={"ids": item_ids, "type": item_type},
         )
 
     # ───────────────────────────────────────────────────────────
@@ -122,7 +122,7 @@ class SpotifyAPIv2:
         # Endpoint: POST /playlists/{id}/items
         return self._sp._post(
             f"playlists/{playlist_id}/items",
-            body={"uris": item_uris, "position": 0},
+            payload={"uris": item_uris, "position": 0},
         )
 
     def playlist_remove_items(self, playlist_id: str, item_uris: list[str]) -> dict:
@@ -135,7 +135,7 @@ class SpotifyAPIv2:
         # Endpoint: DELETE /playlists/{id}/items
         return self._sp._delete(
             f"playlists/{playlist_id}/items",
-            body={"uris": item_uris},
+            payload={"uris": item_uris},
         )
 
     # ───────────────────────────────────────────────────────────

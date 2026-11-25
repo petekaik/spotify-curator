@@ -270,8 +270,8 @@ class TestWriteToSpotify:
         # First call: create playlist via POST /me/playlists
         first_call = sp._post.call_args_list[0]
         assert first_call[0][0] == "me/playlists"
-        # _post(endpoint, body=...) — body is in kwargs
-        body = first_call[1]["body"]
+        # _post(endpoint, payload=...) — payload is in kwargs
+        body = first_call[1]["payload"]
         assert body["name"] == "Test"
         assert body["public"] is False
         # Second call: add items (uses api.playlist_add_items which wraps _post)

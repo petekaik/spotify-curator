@@ -98,6 +98,24 @@ def _load_profile_or_exit() -> "object":  # type: ignore
 # ────────────────────────────────────────────────────────────
 
 @app.command()
+def init():
+    """Create a starter .env file for first-run setup."""
+    env_path = Path.cwd() / ".env"
+    if env_path.exists():
+        console.print(f"[yellow]Existing .env found at {env_path}[/yellow]")
+        return
+
+    sample = Path(__file__).resolve().parents[1] / ".." / ".env.example"
+    if sample.exists():
+        env_path.write_text(sample.read_text())
+    else:
+        env_path.write_text(
+            """# Spotify Curator configuration\nSPOTIPY_CLIENT_ID=\nSPOTIPY_CLIENT_SECRET=\nLASTFM_API_KEY=\n"""
+        )
+    console.print(f"[green]✓ Created {env_path}[/green]")
+
+
+@app.command()
 def auth():
     """Authenticate with Spotify (opens browser for OAuth flow)."""
     console.print("[bold]Authenticating with Spotify...[/bold]")

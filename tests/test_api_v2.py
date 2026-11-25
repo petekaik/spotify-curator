@@ -52,14 +52,14 @@ class TestLibrary:
         api.library_save("track", ["t1", "t2"])
         mock_sp._put.assert_called_once_with(
             "me/library",
-            body={"ids": ["t1", "t2"], "type": "track"},
+            payload={"ids": ["t1", "t2"], "type": "track"},
         )
 
     def test_library_remove(self, api, mock_sp):
         api.library_remove("album", ["a1"])
         mock_sp._delete.assert_called_once_with(
             "me/library",
-            body={"ids": ["a1"], "type": "album"},
+            payload={"ids": ["a1"], "type": "album"},
         )
 
     def test_library_too_many_raises(self, api):
@@ -92,7 +92,7 @@ class TestPlaylists:
         assert result == {"snapshot_id": "abc123"}
         mock_sp._post.assert_called_once_with(
             "playlists/playlist123/items",
-            body={"uris": uris, "position": 0},
+            payload={"uris": uris, "position": 0},
         )
 
     def test_playlist_add_items_caps_at_100(self, api):

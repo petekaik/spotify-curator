@@ -57,6 +57,16 @@ class TestStatusCommand:
         assert "2.5 hours ago" in result.stdout
 
 
+class TestInitCommand:
+    def test_init_creates_env_file(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(app, ["init"])
+        assert result.exit_code == 0
+        env_path = tmp_path / ".env"
+        assert env_path.exists()
+        assert "SPOTIPY_CLIENT_ID" in env_path.read_text()
+
+
 # ────────────────────────────────────────────────────────────
 # Profile subcommands
 # ────────────────────────────────────────────────────────────

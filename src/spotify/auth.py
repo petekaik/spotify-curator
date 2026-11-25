@@ -56,15 +56,15 @@ def _load_credentials() -> tuple[str, str, str]:
         pass
 
     client_id = os.getenv("SPOTIPY_CLIENT_ID")
-    client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
+    client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")  # secretscan:ignore (env lookup, no value)
     redirect_uri = os.getenv("SPOTIPY_REDIRECT_URI", "http://127.0.0.1:8765/callback")
 
-    if not client_id or not client_secret:
+    if not client_id or not client_secret or client_id == "YOUR_CLIENT_ID_HERE" or client_secret == "YOUR_CLIENT_SECRET_HERE":
         print(
-            "❌ Spotify API credentials not found.\n"
-            "   1. Luo app: https://developer.spotify.com/dashboard\n"
-            "   2. Kopioi .env.example → .env projektin juureen\n"
-            "   3. Täytä SPOTIPY_CLIENT_ID ja SPOTIPY_CLIENT_SECRET\n",
+            "❌ Spotify API credentials are still placeholders.\n"
+            "   1. Create or open your Spotify app: https://developer.spotify.com/dashboard\n"
+            "   2. Copy the real client ID and client secret into .env\n"
+            "   3. Keep SPOTIPY_REDIRECT_URI set to http://127.0.0.1:43827/spotify/callback\n",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -81,7 +81,7 @@ def get_oauth() -> SpotifyOAuth:
     client_id, client_secret, redirect_uri = _load_credentials()
     return SpotifyOAuth(
         client_id=client_id,
-        client_secret=client_secret,
+        client_secret=client_secret,  # secretscan:ignore
         redirect_uri=redirect_uri,
         scope=SCOPES,
         cache_path=str(CACHE_FILE),
@@ -111,7 +111,7 @@ def is_authenticated() -> bool:
     try:
         oauth = get_oauth()
         # Try to get token info without triggering auth flow
-        token_info = oauth.cache_handler.get_cached_token()
+        token_info = oauth.cache_handler.get_cached_token()  # secretscan:ignore
         return token_info is not None
     except Exception:
         return False

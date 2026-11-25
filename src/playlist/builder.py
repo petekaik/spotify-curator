@@ -324,7 +324,7 @@ class PlaylistBuilder:
         self._throttle()
         create_result = self._api._sp._post(
             "me/playlists",
-            body={
+            payload={
                 "name": playlist.name,
                 "description": playlist.description,
                 "public": public,
