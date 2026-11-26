@@ -76,13 +76,13 @@ os.makedirs(os.path.dirname(cache_path), exist_ok=True)
 
 oauth = SpotifyOAuth(
     client_id=os.environ['SPOTIPY_CLIENT_ID'],
-    client_secret=os.environ['SPOTIPY_CLIENT_SECRET'],
-    redirect_uri=os.environ.get('SPOTIPY_REDIRECT_URI', 'http://127.0.0.1:8765/callback'),
+    client_secret=os.environ['SPOTIPY_CLIENT_SECRET'],  # secretscan:ignore
+    redirect_uri=os.environ.get('SPOTIPY_REDIRECT_URI', 'http://127.0.0.1:43827/spotify/callback'),
     scope='user-top-read user-library-read user-library-modify playlist-modify-public playlist-modify-private user-follow-read',
     cache_path=cache_path,
     open_browser=True,
 )
-token_info = oauth.get_access_token(as_dict=True)
+token_info = oauth.get_access_token(as_dict=True)  # secretscan:ignore
 print('✓ Got token, expires:', token_info.get('expires_at'))
 print('✓ Token cache written to:', cache_path)
 "

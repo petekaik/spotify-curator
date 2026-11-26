@@ -122,7 +122,7 @@ class SpotifyAPIv2:
         # Endpoint: POST /playlists/{id}/items
         return self._sp._post(
             f"playlists/{playlist_id}/items",
-            payload={"uris": item_uris, "position": 0},
+            payload={"uris": item_uris},  # append, keeps batch order
         )
 
     def playlist_remove_items(self, playlist_id: str, item_uris: list[str]) -> dict:

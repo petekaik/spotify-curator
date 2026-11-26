@@ -21,8 +21,8 @@ def mock_api():
     api = MagicMock()
     api._sp = sp
     # Default search response
-    api.search_artists.return_value = {
-        "artists": {"items": [{"id": "spotify-uuid", "name": "Test"}]}
+    api.search_artists.side_effect = lambda name, limit: {
+        "artists": {"items": [{"id": "spotify-uuid", "name": name}]}
     }
     # Default top tracks response
     api.artist_top_tracks_via_albums.return_value = [
@@ -86,10 +86,18 @@ class TestResolveCandidates:
         assert mock_api[0].search_artists.call_count == 3
 
     def test_drops_candidates_not_found(self, mock_api, sample_candidates):
+        mock_api[0].search_artists.side_effect = None
         mock_api[0].search_artists.return_value = {"artists": {"items": []}}
         builder = PlaylistBuilder(mock_api[0])
         resolved = builder.resolve_candidates(sample_candidates)
         assert len(resolved) == 0
+
+    def test_drops_name_mismatch(self, mock_api, sample_candidates):
+        mock_api[0].search_artists.side_effect = lambda name, limit: {
+            "artists": {"items": [{"id": "x", "name": "Some Famous Act"}]}
+        }
+        builder = PlaylistBuilder(mock_api[0])
+        assert builder.resolve_candidates(sample_candidates) == []
 
     def test_handles_search_error(self, mock_api, sample_candidates):
         mock_api[0].search_artists.side_effect = Exception("API error")

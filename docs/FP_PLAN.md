@@ -1,6 +1,6 @@
 # FP Plan — Feature Plan Backlog
 
-**Last updated:** 2026-07-08
+**Last updated:** 2026-11-26
 **Project:** Spotify Curator
 **Version target:** v0.1.0 (FP-0 → FP-7) by end of July 2026
 
@@ -15,18 +15,7 @@ Just like Clairvoyant-Optics project convention.
 
 ---
 
-## Current Sprint
-
-| ID | Title | Area | BV | TC | WSJF | Status |
-|---|---|---|---|---|---|---|
-| **FP-0** | Project scaffold (dirs, README, docs) | Infra | 8 | 1 | 8.00 | ✅ Done |
-| **FP-1** | OAuth auth + token cache | Spotify | 13 | 2 | 6.50 | ✅ Done |
-| **FP-1b** | API v2 wrapper (Feb 2026 endpoints) | Spotify | 13 | 3 | 4.33 | ✅ Done, 15/15 PASS |
-| **FP-2** | User profile builder | Analyzer | 13 | 3 | 4.33 | ✅ Done, 16/16 PASS |
-| **FP-3** | Discovery: Last.fm + ListenBrainz | Discovery | 8 | 5 | 1.60 | ✅ Done, 25/25 PASS |
-| **FP-4** | Ranking algorithm | Discovery | 13 | 5 | 2.60 | Open |
-
-## Status (2026-07-08)
+## Status (2026-11-26)
 
 | ID | Title | Status |
 |---|---|---|
@@ -38,14 +27,28 @@ Just like Clairvoyant-Optics project convention.
 | FP-3d | Reddit | ✅ |
 | FP-4 | Ranking algorithm | ✅ |
 | FP-5 | Playlist builder | ✅ |
-| FP-6 | Typer CLI | ✅ |
+| FP-6 | Typer CLI (+ `init`, 2026-11-25) | ✅ |
 | FP-7 | vcrpy integration tests | ✅ |
 | FP-8 | Web UI | Open |
-| FP-9 | Daemon mode | ✅ |
-| FP-10 | GH Actions CI | Open |
-| FP-11 | First-run tutorial | Open |
+| FP-9 | Daemon mode | ⚠️ Scheduler + IPC done; `run_weekly_digest` is a stub (no profile refresh, no discovery, no playlist) and no CLI entry point |
+| FP-10 | GH Actions CI | ✅ (`.github/workflows/ci.yml`, ubuntu, `pip install -e ".[dev]"`) |
+| FP-11 | First-run tutorial | Open (`spotify-curator init` is a start) |
 
-**Total: 242/242 tests PASS**
+**Total: 244/244 tests PASS**
+
+### Known issues (code review 2026-11-26)
+
+- **Track choice:** `artist_top_tracks_via_albums` sorts on `popularity`, but the simplified album/track objects have no such field, so it picks the first tracks of the newest release. Needs full track objects (`GET /tracks?ids=`).
+- **No genres in profile (live run 2026-11-26):** `profile build` gives 0 genres — Spotify artist objects no longer carry `genres` for this app, so ranking's genre match is always 0. Fix: take genres from Last.fm `artist.getTopTags` for the user's top artists.
+- **`GET /me/library` returns 405:** the fallback to `/me/albums` works; the "NEW" endpoint call in `fetch.py` can go.
+- **Last.fm listeners = 0:** `tag.getTopArtists` returns no listener counts, so the "emerging" (<50k listeners) signal sees everyone as emerging (Beach House included). Needs `artist.getInfo` per candidate.
+- **Reports format:** the daemon writes `DATA_DIR/reports/<run_id>.md`; the `spotify_curator_get_reports` Hermes tool expects `DATA_DIR/reports/<run>/playlists.json`. Settle on one format when FP-9 is finished.
+
+### Runtime config
+
+- All runtime data lives in `DATA_DIR` = `$SPOTIFY_CURATOR_HOME` or `~/.spotify-curator` (`src/config.py`).
+- Token cache: `$SPOTIPY_CACHE_PATH` or `DATA_DIR/.cache`. `SPOTIPY_OPEN_BROWSER=false` for headless use.
+- `.env` is loaded from cwd, then the project root.
 
 ## Backlog (priority order)
 

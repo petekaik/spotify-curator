@@ -8,7 +8,7 @@ bias.
 The key endpoint: `similar-artists` takes a list of MusicBrainz IDs
 (MBIDs) and returns similar artists with similarity scores.
 
-API docs: https://listenbrainz.readthedocs.io/en/latest/users/api/index.html
+API docs: https://listenbrainz.readthedocs.io/en/latest/users/api/index.html  # secretscan:ignore
 """
 from __future__ import annotations
 
@@ -17,6 +17,8 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+
+from src.config import DATA_DIR
 from typing import Optional
 from urllib.parse import urlencode
 
@@ -25,7 +27,7 @@ import requests
 log = logging.getLogger(__name__)
 
 LABS_BASE = "https://labs.api.listenbrainz.org"
-DEFAULT_CACHE_DIR = Path.home() / ".spotify-curator" / "listenbrainz_cache"
+DEFAULT_CACHE_DIR = DATA_DIR / "listenbrainz_cache"
 
 
 @dataclass
@@ -245,7 +247,7 @@ class ListenBrainzClient:
 # Convenience function
 def find_similar_to_artists(
     mbids: list[str],
-    api_key_unused: Optional[str] = None,  # no key needed
+    api_key_unused: Optional[str] = None,  # no key needed  # secretscan:ignore
 ) -> list[SimilarArtist]:
     """One-shot helper: find artists similar to given MBIDs.
 

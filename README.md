@@ -185,7 +185,7 @@ git clone https://github.com/YOUR_USERNAME/spotify-curator.git
 cd spotify-curator
 
 # 2. Install dependencies
-python3 -m pip install -r requirements.txt
+python3 -m pip install -e ".[dev]"
 
 # 3. Spotify credentials
 #    Create app: https://developer.spotify.com/dashboard

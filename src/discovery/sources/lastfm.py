@@ -19,6 +19,8 @@ import os
 import time
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
+
+from src.config import DATA_DIR
 from typing import Optional
 from urllib.parse import urlencode
 
@@ -27,7 +29,7 @@ import requests
 log = logging.getLogger(__name__)
 
 API_BASE = "https://ws.audioscrobbler.com/2.0/"
-DEFAULT_CACHE_DIR = Path.home() / ".spotify-curator" / "lastfm_cache"
+DEFAULT_CACHE_DIR = DATA_DIR / "lastfm_cache"
 
 
 @dataclass
@@ -45,14 +47,6 @@ class LastfmArtist:
 
 def _load_api_key() -> str:
     """Load LASTFM_API_KEY from .env or environment."""
-    try:
-        from dotenv import load_dotenv
-        env_path = Path(__file__).parent.parent.parent / ".env"
-        if env_path.exists():
-            load_dotenv(env_path)
-    except ImportError:
-        pass
-
     key = os.getenv("LASTFM_API_KEY")
     if not key:
         log.warning(
@@ -87,7 +81,7 @@ class LastfmClient:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: Optional[str] = None,  # secretscan:ignore
         cache_dir: Path = DEFAULT_CACHE_DIR,
         cache_ttl_seconds: int = 7 * 24 * 3600,  # 1 week
         min_request_interval: float = 0.25,        # 4 req/s
@@ -293,7 +287,7 @@ def get_top_artists_for_tag(
     tag: str,
     period: str = "6month",
     limit: int = 30,
-    api_key: Optional[str] = None,
+    api_key: Optional[str] = None,  # secretscan:ignore
 ) -> list[LastfmArtist]:
     """One-shot helper: top artists for a tag.
 

@@ -32,3 +32,4 @@ deploy/secrets/*.json
 .idea/
 *.swp
 *.swo
+*.egg-info/

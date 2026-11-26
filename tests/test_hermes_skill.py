@@ -355,7 +355,7 @@ class TestGenerateWeekly:
 
 class TestGetReports:
     def test_no_reports_dir(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("SPOTIFY_CURATOR_HOME", str(tmp_path))
+        monkeypatch.setattr("src.config.DATA_DIR", tmp_path)
         result = spotify_curator_get_reports()
         assert result["runs"] == []
         assert "daemon" in result["details"].lower()
@@ -373,7 +373,7 @@ class TestGetReports:
                     {"mood": "calming", "url": f"https://open.spotify.com/playlist/{week}"}
                 ],
             }))
-        monkeypatch.setenv("SPOTIFY_CURATOR_HOME", str(tmp_path))
+        monkeypatch.setattr("src.config.DATA_DIR", tmp_path)
         result = spotify_curator_get_reports()
         assert len(result["runs"]) == 2
         # Most recent first
@@ -392,7 +392,7 @@ class TestGetReports:
             "generated_at": "2026-07-01T00:00:00Z",
             "playlists": [{"mood": "energetic", "url": "y"}],
         }))
-        monkeypatch.setenv("SPOTIFY_CURATOR_HOME", str(tmp_path))
+        monkeypatch.setattr("src.config.DATA_DIR", tmp_path)
         result = spotify_curator_get_reports(mood_filter="calming")
         assert len(result["runs"]) == 1
         assert result["runs"][0]["id"] == "2026-W28"

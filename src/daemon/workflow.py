@@ -16,6 +16,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from src.config import DATA_DIR
+
 log = logging.getLogger(__name__)
 
 
@@ -114,7 +116,7 @@ def run_weekly_digest(
 
     Args:
         profile_user_id: which user profile to base recommendations on
-        report_dir: where to save the Markdown report (default: ~/spotify-curator-reports/)
+        report_dir: where to save the Markdown report (default: DATA_DIR/reports/)
         dry_run: if True, don't write to Spotify (useful for testing)
 
     Returns:
@@ -128,7 +130,7 @@ def run_weekly_digest(
     )
 
     if report_dir is None:
-        report_dir = Path.home() / "spotify-curator-reports"
+        report_dir = DATA_DIR / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
 
     log.info(f"Starting weekly digest run {run_id}")
@@ -206,8 +208,8 @@ def run_weekly_digest(
 # IPC (file-based command queue for daemon control)
 # ────────────────────────────────────────────────────────────
 
-COMMAND_FILE = Path.home() / ".spotify-curator" / "daemon.cmd"
-RESPONSE_DIR = Path.home() / ".spotify-curator" / "daemon.responses"
+COMMAND_FILE = DATA_DIR / "daemon.cmd"
+RESPONSE_DIR = DATA_DIR / "daemon.responses"
 
 
 def send_command(
@@ -274,16 +276,19 @@ def process_commands(callback: Callable[[dict], dict]) -> None:
     log.info(f"Daemon watching for commands at {COMMAND_FILE}")
     while True:
         if COMMAND_FILE.exists():
+            request_id = "unknown"
             try:
                 request = json.loads(COMMAND_FILE.read_text())
                 request_id = request.get("request_id", "unknown")
                 log.info(f"Processing command: {request.get('command')}")
                 response = callback(request)
-                response_path = RESPONSE_DIR / f"{request_id}.json"
-                response_path.write_text(json.dumps(response))
-                COMMAND_FILE.unlink()
             except Exception as e:
                 log.exception(f"Command processing failed: {e}")
+                response = {"error": str(e)}
+            finally:
+                COMMAND_FILE.unlink(missing_ok=True)  # never reprocess a failed command
+            RESPONSE_DIR.mkdir(parents=True, exist_ok=True)
+            (RESPONSE_DIR / f"{request_id}.json").write_text(json.dumps(response))
         time.sleep(1.0)
 
 

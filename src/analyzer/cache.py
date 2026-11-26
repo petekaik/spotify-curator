@@ -22,7 +22,7 @@ from src.analyzer.types import UserProfile, TimeRangeData, ArtistRef, TrackRef
 
 log = logging.getLogger(__name__)
 
-CACHE_DIR = Path.home() / ".spotify-curator"
+from src.config import DATA_DIR as CACHE_DIR
 PROFILE_PATH = CACHE_DIR / "profile.parquet"
 
 

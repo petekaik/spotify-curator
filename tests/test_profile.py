@@ -305,8 +305,7 @@ class TestProfileBuilder:
 
         path = tmp_path / "p.parquet"
         builder = ProfileBuilder(api)
-        profile = builder.build_and_save(include_features=False)
-        # Override the default path
+        profile = builder.build(include_features=False)
         builder.save(profile, path)
 
         assert path.exists()

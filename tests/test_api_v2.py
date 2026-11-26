@@ -92,7 +92,7 @@ class TestPlaylists:
         assert result == {"snapshot_id": "abc123"}
         mock_sp._post.assert_called_once_with(
             "playlists/playlist123/items",
-            payload={"uris": uris, "position": 0},
+            payload={"uris": uris},
         )
 
     def test_playlist_add_items_caps_at_100(self, api):

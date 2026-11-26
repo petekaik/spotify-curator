@@ -397,8 +397,8 @@ def spotify_curator_get_reports(
           user has manually saved reports.
     """
     try:
-        import os
-        reports_dir = Path(os.getenv("SPOTIFY_CURATOR_HOME", str(Path.home() / ".spotify-curator"))) / "reports"
+        from src.config import DATA_DIR
+        reports_dir = DATA_DIR / "reports"
         if not reports_dir.exists():
             return {"runs": [], "details": "No reports directory yet. Reports are saved by the daemon (FP-9)."}
 

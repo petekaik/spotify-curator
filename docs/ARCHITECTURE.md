@@ -102,7 +102,6 @@ spotify-curator/
 │   └── exports/                      # rendered playlists
 ├── .env.example
 ├── .gitignore
-├── requirements.txt
 ├── pyproject.toml                    # build + tool config
 ├── README.md                         # user-facing
 └── LICENSE                           # MIT

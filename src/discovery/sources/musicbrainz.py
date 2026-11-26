@@ -17,6 +17,8 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+
+from src.config import DATA_DIR
 from typing import Optional
 
 import musicbrainzngs
@@ -25,7 +27,7 @@ log = logging.getLogger(__name__)
 
 USER_AGENT = ("spotify-curator", "0.2.0",
               "https://github.com/petekaik/spotify-curator")
-DEFAULT_CACHE_DIR = Path.home() / ".spotify-curator" / "musicbrainz_cache"
+DEFAULT_CACHE_DIR = DATA_DIR / "musicbrainz_cache"
 RATE_LIMIT_SECONDS = 1.0  # MusicBrainz recommends 1 req/sec
 
 

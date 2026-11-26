@@ -18,10 +18,11 @@ from typing import Optional
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
-# Cache directory for OAuth tokens
-CACHE_DIR = Path.home() / ".spotify-curator"
-CACHE_FILE = CACHE_DIR / ".cache"
-CACHE_DIR.mkdir(parents=True, exist_ok=True)
+from src.config import DATA_DIR
+
+# OAuth token cache. Container points SPOTIPY_CACHE_PATH at the host-made token (deploy/scripts/auth_on_host.sh).
+CACHE_FILE = Path(os.getenv("SPOTIPY_CACHE_PATH") or DATA_DIR / ".cache")
+OPEN_BROWSER = os.getenv("SPOTIPY_OPEN_BROWSER", "true").lower() != "false"
 
 # Scopes we need:
 # - user-top-read: read user's top artists and tracks
@@ -46,25 +47,16 @@ def _load_credentials() -> tuple[str, str, str]:
     Returns:
         (client_id, client_secret, redirect_uri)
     """
-    # Try to load .env
-    try:
-        from dotenv import load_dotenv
-        env_path = Path(__file__).parent.parent.parent / ".env"
-        if env_path.exists():
-            load_dotenv(env_path)
-    except ImportError:
-        pass
-
     client_id = os.getenv("SPOTIPY_CLIENT_ID")
     client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")  # secretscan:ignore (env lookup, no value)
-    redirect_uri = os.getenv("SPOTIPY_REDIRECT_URI", "http://127.0.0.1:8765/callback")
+    redirect_uri = os.getenv("SPOTIPY_REDIRECT_URI", "http://127.0.0.1:43827/spotify/callback")
 
-    if not client_id or not client_secret or client_id == "YOUR_CLIENT_ID_HERE" or client_secret == "YOUR_CLIENT_SECRET_HERE":
+    if not client_id or not client_secret or client_id.lower().startswith("your_") or client_secret.lower().startswith("your_"):
         print(
             "❌ Spotify API credentials are still placeholders.\n"
             "   1. Create or open your Spotify app: https://developer.spotify.com/dashboard\n"
             "   2. Copy the real client ID and client secret into .env\n"
-            "   3. Keep SPOTIPY_REDIRECT_URI set to http://127.0.0.1:43827/spotify/callback\n",
+            f"   3. Register this redirect URI on the app: {redirect_uri}\n",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -79,13 +71,14 @@ def get_oauth() -> SpotifyOAuth:
         SpotifyOAuth: configured for our cache, scopes, and redirect URI
     """
     client_id, client_secret, redirect_uri = _load_credentials()
+    CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
     return SpotifyOAuth(
         client_id=client_id,
         client_secret=client_secret,  # secretscan:ignore
         redirect_uri=redirect_uri,
         scope=SCOPES,
         cache_path=str(CACHE_FILE),
-        open_browser=True,  # Opens default browser for OAuth flow
+        open_browser=OPEN_BROWSER,
     )
 
 

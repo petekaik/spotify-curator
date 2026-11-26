@@ -88,10 +88,11 @@ class PlaylistBuilder:
             return candidate.spotify_id
         try:
             self._throttle()
-            result = self._api.search_artists(candidate.name, limit=1)
-            items = result.get("artists", {}).get("items", [])
-            if items:
-                return items[0]["id"]
+            result = self._api.search_artists(candidate.name, limit=5)
+            wanted = candidate.name.casefold()
+            for item in result.get("artists", {}).get("items", []):
+                if item.get("name", "").casefold() == wanted:
+                    return item["id"]
         except Exception as e:
             log.warning(f"Spotify search failed for {candidate.name}: {e}")
         return None
@@ -257,13 +258,14 @@ class PlaylistBuilder:
 
         # Step 3: Shuffle
         shuffled = self.shuffle_no_adjacent(artist_tracks)
+        artist_by_uri = {t["uri"]: c.name for c, tracks in artist_tracks for t in tracks}
 
         # Step 4: Convert to PlaylistTrack objects
         pl_tracks = [
             PlaylistTrack(
                 uri=t["uri"],
                 name=t["name"],
-                artist_name=t.get("album_name", ""),  # we'll fix this below
+                artist_name=artist_by_uri.get(t["uri"], ""),
                 album_name=t.get("album_name", ""),
                 duration_ms=t.get("duration_ms", 0),
                 popularity=t.get("popularity", 0),

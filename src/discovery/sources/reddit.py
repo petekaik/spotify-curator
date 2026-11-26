@@ -20,6 +20,8 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+
+from src.config import DATA_DIR
 from typing import Optional
 from urllib.parse import urljoin
 
@@ -28,7 +30,7 @@ import feedparser  # type: ignore[import-untyped]
 log = logging.getLogger(__name__)
 
 USER_AGENT = "spotify-curator/0.2.0 (https://github.com/petekaik/spotify-curator)"
-DEFAULT_CACHE_DIR = Path.home() / ".spotify-curator" / "reddit_cache"
+DEFAULT_CACHE_DIR = DATA_DIR / "reddit_cache"
 RATE_LIMIT_SECONDS = 2.0  # 2 sec between requests to be polite
 
 # Atom namespace used in Reddit's RSS
