@@ -34,14 +34,14 @@ Just like Clairvoyant-Optics project convention.
 | FP-10 | GH Actions CI | ✅ (`.github/workflows/ci.yml`, ubuntu, `pip install -e ".[dev]"`) |
 | FP-11 | First-run tutorial | Open (`spotify-curator init` is a start) |
 
-**Total: 244/244 tests PASS**
+**Total: 246/246 tests PASS**
 
 ### Known issues (code review 2026-11-26)
 
 - **Track choice:** `artist_top_tracks_via_albums` sorts on `popularity`, but the simplified album/track objects have no such field, so it picks the first tracks of the newest release. Needs full track objects (`GET /tracks?ids=`).
-- **No genres in profile (live run 2026-11-26):** `profile build` gives 0 genres — Spotify artist objects no longer carry `genres` for this app, so ranking's genre match is always 0. Fix: take genres from Last.fm `artist.getTopTags` for the user's top artists.
+- **Genres (fixed 2026-11-26):** Spotify no longer returns artist genres for this app; profile genres and candidate tags now come from Last.fm `artist.getInfo` top tags (lowercased, cached).
 - **`GET /me/library` returns 405:** the fallback to `/me/albums` works; the "NEW" endpoint call in `fetch.py` can go.
-- **Last.fm listeners = 0:** `tag.getTopArtists` returns no listener counts, so the "emerging" (<50k listeners) signal sees everyone as emerging (Beach House included). Needs `artist.getInfo` per candidate.
+- **Last.fm listeners (fixed 2026-11-26):** `tag.getTopArtists` results are enriched via `artist.getInfo`. Tag top lists are still dominated by big artists (all >50k listeners for "stoner rock"); better emerging sources (similar-artist expansion, deeper pages) are open.
 - **Reports format:** the daemon writes `DATA_DIR/reports/<run_id>.md`; the `spotify_curator_get_reports` Hermes tool expects `DATA_DIR/reports/<run>/playlists.json`. Settle on one format when FP-9 is finished.
 
 ### Runtime config

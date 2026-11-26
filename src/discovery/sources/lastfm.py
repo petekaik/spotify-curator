@@ -203,7 +203,25 @@ class LastfmClient:
             page=page,
         )
         artists_raw = data.get("topartists", {}).get("artist", [])
-        return [self._parse_artist(a) for a in artists_raw]
+        artists = [self._parse_artist(a) for a in artists_raw]
+        # tag.getTopArtists has no tags or listener counts; ranking needs both.
+        return [a if (a.tags and a.listeners) else self._with_info(a) for a in artists]
+
+    def _with_info(self, a: LastfmArtist) -> LastfmArtist:
+        """Fill missing tags/listeners/playcount from artist.getInfo (cached)."""
+        try:
+            info = self.artist_get_info(a.name)
+        except Exception as e:
+            log.debug(f"artist.getInfo failed for {a.name}: {e}")
+            return a
+        a.tags = a.tags or info.tags
+        a.listeners = a.listeners or info.listeners
+        a.playcount = a.playcount or info.playcount
+        return a
+
+    def artist_tags(self, artist: str, limit: int = 5) -> list[str]:
+        """Top tags for an artist (used as genres when Spotify returns none)."""
+        return self.artist_get_info(artist).tags[:limit]
 
     def artist_get_info(
         self,
@@ -247,7 +265,8 @@ class LastfmClient:
     def _parse_artist(self, raw: dict, include_similar: bool = False) -> LastfmArtist:
         """Parse a Last.fm artist dict into LastfmArtist."""
         tags_raw = raw.get("tags", {}).get("tag", [])
-        tags = [t.get("name", "") for t in tags_raw if t.get("name")]
+        # Lowercase so Last.fm tags compare equal across sources; "seen live" says nothing about genre.
+        tags = [t["name"].lower() for t in tags_raw if t.get("name") and t["name"].lower() != "seen live"]
 
         bio = raw.get("bio", {})
         bio_summary = bio.get("summary", "") if isinstance(bio, dict) else ""

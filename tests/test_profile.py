@@ -342,3 +342,18 @@ class TestProfileBuilder:
         ]
         assert len(library_calls) >= 1
         assert library_calls[0][1].get("type") == "album"
+
+
+class TestLastfmGenreFallback:
+    def test_fills_missing_genres_from_lastfm(self):
+        lastfm = MagicMock(_api_key="fake")
+        lastfm.artist_tags.side_effect = lambda name: {"A": ["dream pop", "shoegaze"]}.get(name, [])
+        tr = {"short_term": TimeRangeData("short_term", 0.5, artists=[
+            ArtistRef(id="1", name="A"),
+            ArtistRef(id="2", name="B", genres=["jazz"]),
+        ])}
+        builder = ProfileBuilder(MagicMock(), user_id="u", lastfm=lastfm)
+        builder._fill_genres_from_lastfm(tr)
+        assert tr["short_term"].artists[0].genres == ["dream pop", "shoegaze"]
+        assert tr["short_term"].artists[1].genres == ["jazz"]  # Spotify genres kept
+        lastfm.artist_tags.assert_called_once_with("A")

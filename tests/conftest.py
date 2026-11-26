@@ -5,3 +5,5 @@ import tempfile
 # Must run before any src module is imported: DATA_DIR is read at import time.
 os.environ["SPOTIFY_CURATOR_HOME"] = tempfile.mkdtemp(prefix="spotify-curator-test-")
 os.environ.pop("SPOTIPY_CACHE_PATH", None)
+# Empty (not unset) so .env can't fill it: no real Last.fm calls from tests.
+os.environ["LASTFM_API_KEY"] = ""

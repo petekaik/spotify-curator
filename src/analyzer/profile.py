@@ -37,7 +37,7 @@ class ProfileBuilder:
     one. This makes it testable with mocks.
     """
 
-    def __init__(self, api: SpotifyAPIv2, user_id: str | None = None):
+    def __init__(self, api: SpotifyAPIv2, user_id: str | None = None, lastfm=None):
         """Initialize with a SpotifyAPIv2 instance.
 
         Args:
@@ -45,6 +45,7 @@ class ProfileBuilder:
             user_id: Spotify user ID (auto-fetched if None)
         """
         self._api = api
+        self._lastfm = lastfm
         self._user_id = user_id or self._fetch_user_id()
         log.info(f"ProfileBuilder initialized for user {self._user_id}")
 
@@ -80,6 +81,7 @@ class ProfileBuilder:
             features_by_track_raw if isinstance(features_by_track_raw, dict) else {}
         )
 
+        self._fill_genres_from_lastfm(time_ranges)
         artist_weights = compute_artist_weights(time_ranges)
         genre_weights = compute_genre_weights(time_ranges, artist_weights)
         centroid = compute_features_centroid(features_by_track, time_ranges, artist_weights)
@@ -109,6 +111,29 @@ class ProfileBuilder:
             f"{total_genres} genres, {total_tracks} tracks"
         )
         return profile
+
+    def _fill_genres_from_lastfm(self, time_ranges: dict) -> None:
+        """Spotify no longer returns artist genres for this app; use Last.fm top tags instead."""
+        missing = {a.name for td in time_ranges.values() for a in td.artists if not a.genres}
+        if not missing:
+            return
+        lastfm = self._lastfm
+        if lastfm is None:
+            from src.discovery.sources.lastfm import LastfmClient
+            lastfm = LastfmClient()
+        if not lastfm._api_key:
+            log.warning("No Spotify genres and no LASTFM_API_KEY: profile will have no genres")
+            return
+        tags: dict[str, list[str]] = {}
+        for name in missing:
+            try:
+                tags[name] = lastfm.artist_tags(name)
+            except Exception as e:
+                log.debug(f"Last.fm tags failed for {name}: {e}")
+        for td in time_ranges.values():
+            for a in td.artists:
+                if not a.genres:
+                    a.genres = tags.get(a.name, [])
 
     def save(self, profile: UserProfile, path=PROFILE_PATH) -> None:
         """Persist the profile to Parquet cache."""

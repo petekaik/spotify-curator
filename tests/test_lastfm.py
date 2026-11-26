@@ -201,3 +201,15 @@ class TestConvenience:
         instance.tag_get_top_artists.assert_called_once_with(
             "indie rock", period="6month", limit=30,
         )
+
+
+class TestTagEnrichment:
+    def test_fills_tags_and_listeners_from_get_info(self, tmp_path):
+        """tag.getTopArtists returns no tags/stats; they come from artist.getInfo."""
+        client = LastfmClient(api_key="fake", cache_dir=tmp_path)
+        bare = {"topartists": {"artist": [{"name": "Phoebe Bridgers"}]}}
+        with patch.object(client, "_call", side_effect=[bare, SAMPLE_ARTIST_INFO_RESPONSE]):
+            artists = client.tag_get_top_artists("indie rock", limit=1)
+        info = client._parse_artist(SAMPLE_ARTIST_INFO_RESPONSE["artist"])
+        assert artists[0].tags == info.tags and artists[0].tags
+        assert artists[0].listeners == info.listeners > 0
