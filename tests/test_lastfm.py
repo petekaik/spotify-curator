@@ -224,3 +224,20 @@ class TestTagEnrichment:
         info = client._parse_artist(SAMPLE_ARTIST_INFO_RESPONSE["artist"])
         assert artists[0].tags == info.tags and artists[0].tags
         assert artists[0].listeners == info.listeners > 0
+
+
+class TestArtistTopTracks:
+    def test_returns_names_in_playcount_order(self, tmp_path):
+        client = LastfmClient(api_key="test", cache_dir=tmp_path)
+        resp = {"toptracks": {"track": [{"name": "Breadcrumb Trail"}, {"name": "Nosferatu Man"}]}}
+        with patch.object(client, "_call", return_value=resp) as mock_call:
+            assert client.artist_top_tracks("Slint", limit=2) == [
+                "Breadcrumb Trail",
+                "Nosferatu Man",
+            ]
+        assert mock_call.call_args.args[0] == "artist.getTopTracks"
+
+    def test_failure_returns_empty(self, tmp_path):
+        client = LastfmClient(api_key="test", cache_dir=tmp_path)
+        with patch.object(client, "_call", side_effect=RuntimeError("boom")):
+            assert client.artist_top_tracks("Slint") == []

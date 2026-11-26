@@ -6,6 +6,10 @@ matching section below as a GitHub release.
 
 ## [Unreleased]
 
+### Fixed
+- Playlists use each artist's best-known songs (Last.fm play counts, matched on Spotify by artist
+  ID) instead of the first tracks of their newest release. Spotify no longer reports popularity.
+
 ## [0.3.0] - 2026-11-26
 
 ### Added

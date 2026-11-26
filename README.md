@@ -39,7 +39,8 @@ flowchart LR
    playlist creation.
 3. **Rank.** The score rewards genre overlap with your profile and a small audience
    (log-scaled Last.fm listeners), and penalises artists above 50,000 listeners.
-4. **Build.** Each candidate is matched to a Spotify artist by exact name, two tracks are picked,
+4. **Build.** Each candidate is matched to a Spotify artist by exact name, its two most-played
+   songs on Last.fm are found on Spotify,
    and the playlist is shuffled so the same artist never plays twice in a row.
 
 ## Quick start
@@ -117,7 +118,7 @@ Checked end to end against a real Spotify account on 2026-11-26.
 | Profile genres from Last.fm tags | ✅ Works live: 144 genres from 127 artists |
 | Docker image with Hermes Agent skill (8 tools) | ✅ Builds and imports in CI · ⏳ not yet run against a live agent |
 | ListenBrainz, MusicBrainz, Reddit sources | ✅ Unit-tested · ⏳ not used by `playlist create` yet |
-| Track choice | ⚠️ Takes the newest release; Spotify's album lists carry no popularity ([FP_PLAN](docs/FP_PLAN.md#known-issues-code-review-2026-11-26)) |
+| Track choice | ✅ Works live: each artist's most-played songs on Last.fm, matched on Spotify by artist ID |
 | MCP server: 8 tools, stdio and HTTP, persistent tuning | ✅ Checked with a real MCP client over stdio and HTTP |
 | Weekly digest daemon (FP-9) | 🚧 Scheduler and IPC done; the digest pipeline is a stub |
 | Web UI (FP-8) | 📋 Planned |
