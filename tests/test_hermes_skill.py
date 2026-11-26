@@ -11,6 +11,7 @@ the tool layer correctly:
 import json
 from unittest.mock import MagicMock, patch
 
+from src.discovery.ranking import TuningConfig
 from src.hermes_skill.tools import (
     TOOL_REGISTRY,
     VALID_MOODS,
@@ -95,6 +96,7 @@ class TestRefreshProfile:
             mods = {
                 "is_authenticated": lambda: True,
                 "get_spotify_client": MagicMock(),
+                "load_tuning": TuningConfig,
                 "SpotifyAPIv2": MagicMock(),
                 "ProfileBuilder": MagicMock(
                     return_value=MagicMock(build_and_save=MagicMock(return_value=mock_profile))
@@ -140,6 +142,7 @@ class TestRefreshProfile:
             mods = {
                 "is_authenticated": lambda: True,
                 "get_spotify_client": MagicMock(),
+                "load_tuning": TuningConfig,
                 "SpotifyAPIv2": MagicMock(),
                 "ProfileBuilder": MagicMock(
                     return_value=MagicMock(build_and_save=mock_build_and_save)
@@ -268,6 +271,7 @@ class TestGenerateMood:
                     )
                 ),
                 "get_spotify_client": MagicMock(),
+                "load_tuning": TuningConfig,
                 "SpotifyAPIv2": MagicMock(),
                 "PlaylistBuilder": MagicMock(),
             }
@@ -283,7 +287,7 @@ class TestGenerateMood:
         from src.analyzer.types import UserProfile
         from src.discovery.ranking import Candidate
         from src.discovery.sources.lastfm import LastfmArtist
-        from src.playlist.builder import BuiltPlaylist
+        from src.playlist.builder import BuiltPlaylist, PlaylistTrack
 
         profile = UserProfile(
             user_id="u1",
@@ -296,7 +300,10 @@ class TestGenerateMood:
         mock_playlist = BuiltPlaylist(
             name="Test",
             description="",
-            tracks=[],
+            tracks=[
+                PlaylistTrack(uri=f"spotify:track:{i}", name=f"T{i}", artist_name=f"A{i}")
+                for i in (1, 2, 3)
+            ],
             candidate_count=3,
             total_artist_count=3,
             spotify_playlist_id="pl-123",
@@ -326,6 +333,7 @@ class TestGenerateMood:
                     )
                 ),
                 "get_spotify_client": MagicMock(),
+                "load_tuning": TuningConfig,
                 "SpotifyAPIv2": MagicMock(),
                 "PlaylistBuilder": MagicMock(
                     return_value=MagicMock(
@@ -463,7 +471,7 @@ class TestGetReports:
 
 class TestToolRegistry:
     def test_all_tools_registered(self):
-        assert len(TOOL_REGISTRY) == 6
+        assert len(TOOL_REGISTRY) == 8
         for name in (
             "spotify_curator_status",
             "spotify_curator_refresh_profile",
@@ -493,8 +501,8 @@ class TestToolRegistry:
 
         mock_registry = MagicMock()
         register_tools(mock_registry)
-        # Should have registered all 6 tools
-        assert mock_registry.register.call_count == 6
+        # Should have registered all 8 tools
+        assert mock_registry.register.call_count == 8
         registered_names = {c.kwargs["name"] for c in mock_registry.register.call_args_list}
         assert "spotify_curator_status" in registered_names
         assert "spotify_curator_generate_weekly" in registered_names
@@ -520,6 +528,7 @@ class TestErrorHandling:
             mods = {
                 "is_authenticated": lambda: True,
                 "get_spotify_client": MagicMock(),
+                "load_tuning": TuningConfig,
                 "SpotifyAPIv2": MagicMock(),
                 "ProfileBuilder": MagicMock(
                     return_value=MagicMock(
@@ -531,3 +540,14 @@ class TestErrorHandling:
             result = spotify_curator_refresh_profile()
         assert result["error"] == "profile_build_failed"
         assert "401" in result["details"]
+
+
+def test_lazy_import_helper_provides_every_module_the_tools_use():
+    """Guards against lint autofixes stripping the lazy imports (happened once)."""
+    import re
+    from pathlib import Path
+
+    from src.hermes_skill.tools import _import_spotify_curator
+
+    used = set(re.findall(r'mods\["(\w+)"\]', Path("src/hermes_skill/tools.py").read_text()))
+    assert used <= set(_import_spotify_curator())

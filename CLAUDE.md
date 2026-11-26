@@ -18,7 +18,8 @@ spotify-curator --help                          # CLI
 - `src/analyzer/`: taste profile from top artists/tracks, Parquet cache
 - `src/discovery/`: sources (Last.fm, ListenBrainz, MusicBrainz, Reddit) and `ranking.py`
 - `src/playlist/`: resolve candidates, pick tracks, shuffle, write to Spotify
-- `src/cli/`: Typer CLI; `src/hermes_skill/`: the same pipeline as agent tools; `src/daemon/`: scheduler (digest is a stub)
+- `src/cli/`: Typer CLI; `src/hermes_skill/`: the same pipeline as agent tools; `src/mcp_server.py`:
+  those tools over MCP; `src/daemon/`: scheduler (digest is a stub)
 - `src/config.py`: the only place that loads `.env` and defines `DATA_DIR`
 
 ## Rules
