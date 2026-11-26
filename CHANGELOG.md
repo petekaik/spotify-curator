@@ -22,6 +22,8 @@ matching section below as a GitHub release.
   move the ranking.
 
 ### Fixed
+- Daemon `send_command` gave up on a response file it saw before the daemon finished writing
+  it, which failed CI on Python 3.13. It now keeps waiting until the timeout.
 - Hermes tools failed at runtime: a lint autofix had removed their lazy imports. A test now guards it.
 
 ## [0.2.0] - 2026-11-26
