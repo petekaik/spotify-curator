@@ -3,8 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+  pull_request:  # every PR, including ones stacked on another branch
   workflow_dispatch:
 
 permissions:
@@ -21,8 +20,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       # Same ruff version as .pre-commit-config.yaml
-      - run: pipx run ruff==0.17.6 check --output-format=github src tests
-      - run: pipx run ruff==0.17.6 format --check src tests
+      - run: pipx run ruff==0.17.6 check --output-format=github src tests evals
+      - run: pipx run ruff==0.17.6 format --check src tests evals
 
   test:
     name: Tests (Python ${{ matrix.python-version }})

@@ -421,3 +421,27 @@ class TestDefaultWeeklyDigest:
     def test_default_function_exists(self):
         """The default workflow should be importable."""
         assert callable(default_weekly_digest)
+
+
+def test_send_command_waits_out_a_half_written_response(tmp_path, monkeypatch):
+    """A response file seen before its content lands must not end the wait (CI race on 3.13)."""
+    import json
+    import threading
+
+    from src.daemon.workflow import send_command
+
+    cmd_file, resp_dir = tmp_path / "daemon.cmd", tmp_path / "responses"
+    resp_dir.mkdir()
+    monkeypatch.setattr("src.daemon.workflow.COMMAND_FILE", cmd_file)
+    monkeypatch.setattr("src.daemon.workflow.RESPONSE_DIR", resp_dir)
+
+    def daemon():
+        while not cmd_file.exists():
+            time.sleep(0.01)
+        resp = resp_dir / f"{json.loads(cmd_file.read_text())['request_id']}.json"
+        resp.write_text("")  # created, not yet written
+        time.sleep(0.3)
+        resp.write_text(json.dumps({"status": "ok"}))
+
+    threading.Thread(target=daemon, daemon=True).start()
+    assert send_command("status", timeout_seconds=5.0) == {"status": "ok"}
