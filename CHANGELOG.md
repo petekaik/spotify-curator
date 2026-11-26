@@ -15,6 +15,11 @@ matching section below as a GitHub release.
 - Persistent ranking tuning (`$SPOTIFY_CURATOR_HOME/tuning.json`) with `get_tuning` /
   `update_tuning` tools; mood seed tags and preferred geo tags are tunable.
 - `dry_run` for mood playlists.
+- Ranker evaluation harness (`python -m evals.harness`): runs the real ranker on a frozen snapshot
+  of real Last.fm data, gates four quality metrics against a committed baseline, checks that the
+  tuning knobs do what they claim, and writes [evals/REPORT.md](evals/REPORT.md). Runs in CI.
+  First findings: 12 of the top 15 are artists the listener already knows, and a geo tag does not
+  move the ranking.
 
 ### Fixed
 - Hermes tools failed at runtime: a lint autofix had removed their lazy imports. A test now guards it.
