@@ -22,6 +22,8 @@ matching section below as a GitHub release.
   it, which failed CI on Python 3.13. It now keeps waiting until the timeout.
 - Playlists use each artist's best-known songs (Last.fm play counts, matched on Spotify by artist
   ID) instead of the first tracks of their newest release. Spotify no longer reports popularity.
+- Tuning: a string for `preferred_geo_tags` or `mood_tags` is rejected (it was saved and matched
+  letter by letter), and `reset` with an invalid change no longer wipes the saved tuning.
 
 ## [0.3.0] - 2026-11-26
 

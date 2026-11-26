@@ -520,12 +520,10 @@ def spotify_curator_update_tuning(
     """
     from dataclasses import asdict
 
-    from src.discovery.ranking import TuningConfig, save_tuning, update_tuning
+    from src.discovery.ranking import update_tuning
 
     try:
-        if reset:
-            save_tuning(TuningConfig())
-        cfg = update_tuning(changes or {})
+        cfg = update_tuning(changes or {}, reset=reset)
         return {"success": True, "tuning": asdict(cfg)}
     except (ValueError, TypeError) as e:
         return {"error": "invalid_tuning", "details": str(e)}

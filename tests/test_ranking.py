@@ -434,3 +434,36 @@ class TestSavedTuning:
         after = dict((c.name, s) for c, s, _ in ranking.rank_artists([local, other], profile))
         assert before["Local"] == before["Other"]
         assert after["Local"] > after["Other"]
+
+
+class TestTuningTypes:
+    @pytest.mark.parametrize(
+        "changes",
+        [{"preferred_geo_tags": "finnish"}, {"mood_tags": "post-rock"}],
+    )
+    def test_wrong_container_type_is_rejected(self, tmp_path, changes):
+        from src.discovery.ranking import update_tuning
+
+        with pytest.raises(ValueError):
+            update_tuning(changes, tmp_path / "t.json")
+        assert not (tmp_path / "t.json").exists()
+
+    def test_reset_with_invalid_change_keeps_saved_tuning(self, tmp_path):
+        from src.discovery.ranking import load_tuning, update_tuning
+
+        path = tmp_path / "t.json"
+        update_tuning({"geo_bonus": 0.2}, path)
+        with pytest.raises(ValueError):
+            update_tuning({"mainstream_penalty": 5}, path, reset=True)
+        assert load_tuning(path).geo_bonus == 0.2
+
+    def test_reset_restores_defaults_then_applies_changes(self, tmp_path):
+        from src.discovery.ranking import TuningConfig, load_tuning, update_tuning
+
+        path = tmp_path / "t.json"
+        update_tuning({"geo_bonus": 0.2, "mood_tags": {"focus": "post-rock"}}, path)
+        cfg = update_tuning({"mainstream_penalty": -0.5}, path, reset=True)
+        assert cfg == load_tuning(path)
+        assert cfg.geo_bonus == TuningConfig().geo_bonus
+        assert cfg.mood_tags["focus"] == TuningConfig().mood_tags["focus"]
+        assert cfg.mainstream_penalty == -0.5
