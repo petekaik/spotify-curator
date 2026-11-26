@@ -15,7 +15,7 @@
 #
 # Networking: bridge mode with explicit port mappings.
 #   - 8642: Hermes API server (WebUI / API access)
-#   - 8788: spotify-curator IPC (custom; future FP-9 use)
+#   - 8788: spotify-curator MCP server (service `mcp`, bearer-token auth)
 #   - 9090: Prometheus-style metrics (optional, FP-9+)
 #
 # To run:
@@ -62,7 +62,7 @@ services:
 
       # Spotify OAuth tokens (created on host, mounted read-only)
       # This is the bridge between local-Mac OAuth flow and headless container
-      - ./secrets:/opt/secrets:ro
+      - ./secrets:/opt/secrets:ro  # secretscan:ignore (mount path)
 
       # Live project code — bind mount for dev iteration without rebuild
       # (Dockerfile COPYs are also there for first-build; bind-mount wins at runtime)
@@ -74,7 +74,6 @@ services:
     # Port mappings
     ports:
       - "127.0.0.1:8642:8642"   # Hermes API server (localhost-only by default)
-      - "127.0.0.1:8788:8788"   # spotify-curator IPC (FP-9, when implemented)
       # Remove "127.0.0.1:" to expose to LAN; add auth if exposing publicly
 
     # Resource limits — adjust to your Mac's capacity
@@ -109,6 +108,33 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  # MCP server: lets Claude, Codex, OpenClaw, Hermes etc. run and tune the curator.
+  # Same image, data and token cache as Hermes, so tuning applies to both.
+  mcp:
+    image: spotify-curator:latest
+    container_name: spotify-curator-mcp
+    depends_on: [hermes-spotify-curator]   # builds the image first
+    command: ["spotify-curator-mcp", "--http", "--host", "0.0.0.0", "--port", "8788"]
+    env_file:
+      - .env
+    environment:
+      SPOTIPY_OPEN_BROWSER: "false"
+      SPOTIFY_CURATOR_HOME: /opt/data/spotify-curator
+    volumes:
+      - ./data:/opt/data
+      - ./secrets:/opt/secrets:ro  # secretscan:ignore (mount path)
+      - ../src:/opt/project/src
+    ports:
+      - "127.0.0.1:8788:8788"   # remove "127.0.0.1:" to reach it from the LAN
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8788/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - hermes-net
 
 networks:
   hermes-net:

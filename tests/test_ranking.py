@@ -380,3 +380,57 @@ class TestFromLastfm:
         assert c.lastfm_tags == ["indie rock"]
         assert c.similar_artists == ["Adrianne Lenker"]
         assert c.source == "lastfm:tag"
+
+
+class TestSavedTuning:
+    def test_defaults_when_nothing_saved(self, tmp_path):
+        from src.discovery.ranking import TuningConfig, load_tuning
+
+        assert load_tuning(tmp_path / "none.json") == TuningConfig()
+
+    def test_update_merges_and_persists(self, tmp_path):
+        from src.discovery.ranking import load_tuning, update_tuning
+
+        path = tmp_path / "t.json"
+        update_tuning({"geo_bonus": 0.2, "mood_tags": {"focus": "post-rock"}}, path)
+        cfg = load_tuning(path)
+        assert cfg.geo_bonus == 0.2
+        assert cfg.mood_tags["focus"] == "post-rock"
+        assert cfg.mood_tags["calming"] == "ambient"
+
+    @pytest.mark.parametrize(
+        "changes",
+        [
+            {"nope": 1},
+            {"genre_match": 2},
+            {"mood_tags": {"party": "edm"}},
+            {"mood_tags": {"focus": ""}},
+        ],
+    )
+    def test_rejects_invalid_changes(self, tmp_path, changes):
+        from src.discovery.ranking import update_tuning
+
+        with pytest.raises(ValueError):
+            update_tuning(changes, tmp_path / "t.json")
+        assert not (tmp_path / "t.json").exists()
+
+    def test_corrupt_file_raises_clear_error(self, tmp_path):
+        from src.discovery.ranking import load_tuning
+
+        bad = tmp_path / "t.json"
+        bad.write_text("{not json")
+        with pytest.raises(ValueError, match="not valid JSON"):
+            load_tuning(bad)
+
+    def test_rank_artists_uses_saved_geo_tags(self, tmp_path, monkeypatch):
+        from src.discovery import ranking
+
+        monkeypatch.setattr(ranking, "TUNING_PATH", tmp_path / "t.json")
+        profile = UserProfile(user_id="u", updated_at=datetime.now())
+        local = ranking.Candidate(name="Local", lastfm_tags=["finnish"], lastfm_listeners=1000)
+        other = ranking.Candidate(name="Other", lastfm_tags=["swedish"], lastfm_listeners=1000)
+        before = dict((c.name, s) for c, s, _ in ranking.rank_artists([local, other], profile))
+        ranking.update_tuning({"preferred_geo_tags": ["finnish"]})
+        after = dict((c.name, s) for c, s, _ in ranking.rank_artists([local, other], profile))
+        assert before["Local"] == before["Other"]
+        assert after["Local"] > after["Other"]

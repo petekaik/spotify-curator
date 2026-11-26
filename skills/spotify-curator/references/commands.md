@@ -216,6 +216,33 @@ recent digests", "find my [mood] playlist from [time]"
 
 ---
 
+## `spotify_curator_get_tuning`
+
+No arguments. Returns `tuning` (current values), `defaults`, `help` (one line per setting) and
+`saved_in` (the tuning file; null when nothing is saved).
+
+**When the user asks:** "how do you rank artists?", "what tag do you use for focus?"
+
+## `spotify_curator_update_tuning`
+
+| Arg | Type | Default | Notes |
+|---|---|---|---|
+| `changes` | object | `{}` | Only the keys to change. `mood_tags` merges per mood. |
+| `reset` | bool | false | Restore defaults first |
+
+Saved to `$SPOTIFY_CURATOR_HOME/tuning.json`; every later run (CLI, Hermes, MCP) uses it.
+Invalid keys or out-of-range values return `{"error": "invalid_tuning"}` and change nothing.
+
+```python
+await tool("spotify_curator_update_tuning",
+           changes={"mainstream_penalty": -0.5, "preferred_geo_tags": ["finnish"],
+                    "mood_tags": {"focus": "post-rock"}})
+```
+
+**When the user asks:** "fewer big names", "more Finnish bands", "use post-rock for focus"
+
+---
+
 ## Error responses
 
 All tools return `{"error": "...", "details": "..."}` on failure rather

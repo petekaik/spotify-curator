@@ -37,7 +37,7 @@ Do NOT trigger on:
 
 ## How to invoke
 
-This skill exposes **6 tools** (see references/commands.md for full schema).
+This skill exposes **8 tools** (see references/commands.md for full schema).
 When the user asks for any spotify-curator action, call the matching tool
 and pass the result back conversationally. The tool returns a structured
 JSON dict — present the most useful fields to the user, not the raw blob.
@@ -77,11 +77,15 @@ with a clear message. Surface that to the user, do not retry blindly.
 | `spotify_curator_generate_weekly` | Full weekly digest across all moods |
 | `spotify_curator_generate_mood` | Single-mood playlist (cheerful/calming/etc) |
 | `spotify_curator_get_reports` | List past runs + their Spotify playlist URLs |
+| `spotify_curator_get_tuning` | Current ranking settings, defaults and what each does |
+| `spotify_curator_update_tuning` | Change ranking settings or a mood's seed tag (saved) |
+
+`spotify_curator_generate_mood` takes `dry_run=true` to preview tracks without writing.
 
 ## When to fall back to direct CLI
 
 The tools cover 90% of use cases. For one-off operations (building from
-a custom tag, dry-run previews, tweaking ranking weights) use the CLI:
+a custom tag) use the CLI:
 
 ```bash
 python -m src.cli.main playlist create "My Mix" --tag "shoegaze" --dry-run
@@ -98,7 +102,7 @@ These are the same commands available inside the Docker container at
 │ Hermes Agent (this container)                   │
 │  ┌──────────────────────────────────────────┐  │
 │  │  spotify-curator skill (this file)       │  │
-│  │  exposes 6 tools                         │  │
+│  │  exposes 8 tools                         │  │
 │  └────────────┬─────────────────────────────┘  │
 │               │ tool calls                      │
 │  ┌────────────▼─────────────────────────────┐  │

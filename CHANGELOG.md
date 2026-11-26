@@ -6,6 +6,17 @@ matching section below as a GitHub release.
 
 ## [Unreleased]
 
+### Added
+- MCP server (`spotify-curator-mcp`): the agent tools for Claude, Codex, OpenClaw, Hermes and any
+  MCP client, over stdio or streamable HTTP with bearer-token auth; `mcp` service in
+  `deploy/compose.yml`.
+- Persistent ranking tuning (`$SPOTIFY_CURATOR_HOME/tuning.json`) with `get_tuning` /
+  `update_tuning` tools; mood seed tags and preferred geo tags are tunable.
+- `dry_run` for mood playlists.
+
+### Fixed
+- Hermes tools failed at runtime: a lint autofix had removed their lazy imports. A test now guards it.
+
 ## [0.2.0] - 2026-11-26
 
 ### Added

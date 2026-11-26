@@ -25,15 +25,31 @@ All weights are configurable via TuningConfig.
 
 from __future__ import annotations
 
+import json
 import math
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, fields, replace
 
 from src.analyzer.types import TrackFeatures, UserProfile
+from src.config import DATA_DIR
 from src.discovery.sources.lastfm import LastfmArtist
 
 # ────────────────────────────────────────────────────────────
 # Configuration
 # ────────────────────────────────────────────────────────────
+
+
+# Mood -> Last.fm tag used to seed discovery for that mood's playlist.
+DEFAULT_MOOD_TAGS = {
+    "cheerful": "indie pop",
+    "calming": "ambient",
+    "stimulating": "math rock",
+    "focus": "minimal",
+    "melancholic": "sadcore",
+    "energetic": "post-punk",
+}
+
+# Saved tuning; every ranking call (CLI, Hermes, MCP) reads it.
+TUNING_PATH = DATA_DIR / "tuning.json"
 
 
 @dataclass
@@ -71,6 +87,12 @@ class TuningConfig:
     discovery_album_full_bonus: int = 1
     discovery_album_zero_bonus: int = 10
 
+    # Local-scene tags that earn geo_bonus, e.g. ["finnish", "helsinki"]
+    preferred_geo_tags: list[str] = field(default_factory=list)
+
+    # Which Last.fm tag seeds each mood playlist
+    mood_tags: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_MOOD_TAGS))
+
     def validate(self) -> None:
         """Sanity check: ensure weights are in plausible range."""
         for name in (
@@ -87,6 +109,57 @@ class TuningConfig:
             raise ValueError(
                 f"mainstream_penalty must be in [-1, 0], got {self.mainstream_penalty}"
             )
+        if self.mainstream_listener_threshold <= 0:
+            raise ValueError("mainstream_listener_threshold must be > 0")
+        if not (0.0 <= self.penalty_steepness <= 1.0):
+            raise ValueError(f"penalty_steepness must be in [0, 1], got {self.penalty_steepness}")
+        if not (0 < self.discovery_album_full_bonus < self.discovery_album_zero_bonus):
+            raise ValueError("need 0 < discovery_album_full_bonus < discovery_album_zero_bonus")
+        if not all(isinstance(t, str) and t.strip() for t in self.preferred_geo_tags):
+            raise ValueError("preferred_geo_tags must be non-empty strings")
+        if set(self.mood_tags) != set(DEFAULT_MOOD_TAGS):
+            raise ValueError(f"mood_tags must have exactly the moods {sorted(DEFAULT_MOOD_TAGS)}")
+        if not all(isinstance(t, str) and t.strip() for t in self.mood_tags.values()):
+            raise ValueError("mood_tags values must be non-empty Last.fm tags")
+
+
+def load_tuning(path=None) -> TuningConfig:
+    """Saved tuning, or defaults when nothing is saved. Invalid files raise ValueError."""
+    path = path or TUNING_PATH
+    if not path.exists():
+        return TuningConfig()
+    try:
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError as e:
+        raise ValueError(f"{path} is not valid JSON: {e}") from e
+    known = {f.name for f in fields(TuningConfig)}
+    cfg = TuningConfig(**{k: v for k, v in data.items() if k in known})
+    cfg.validate()
+    return cfg
+
+
+def save_tuning(cfg: TuningConfig, path=None) -> None:
+    """Validate, then write atomically so a crash never leaves a half-written file."""
+    path = path or TUNING_PATH
+    cfg.validate()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(asdict(cfg), indent=2))
+    tmp.replace(path)
+
+
+def update_tuning(changes: dict, path=None) -> TuningConfig:
+    """Apply a partial change set (mood_tags merges per mood) and save it."""
+    known = {f.name for f in fields(TuningConfig)}
+    unknown = set(changes) - known
+    if unknown:
+        raise ValueError(f"unknown tuning keys: {sorted(unknown)}; valid: {sorted(known)}")
+    current = load_tuning(path)
+    if "mood_tags" in changes:
+        changes = {**changes, "mood_tags": {**current.mood_tags, **changes["mood_tags"]}}
+    cfg = replace(current, **changes)
+    save_tuning(cfg, path)
+    return cfg
 
 
 # ────────────────────────────────────────────────────────────
@@ -337,11 +410,11 @@ def score_artist(
         - component_breakdown: dict mapping component name → its contribution
     """
     if config is None:
-        config = TuningConfig()
+        config = load_tuning()
     config.validate()
 
     if preferred_geo_tags is None:
-        preferred_geo_tags = []
+        preferred_geo_tags = config.preferred_geo_tags
 
     components: dict[str, float] = {}
 
@@ -385,6 +458,7 @@ def rank_artists(
     Returns:
         list of (candidate, total_score, component_breakdown) sorted by score desc
     """
+    config = config or load_tuning()  # read the saved tuning once, not per candidate
     scored: list[tuple[Candidate, float, dict[str, float]]] = []
     for c in candidates:
         total, components = score_artist(c, profile, config, preferred_geo_tags)

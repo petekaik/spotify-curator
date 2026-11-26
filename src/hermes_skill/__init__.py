@@ -16,8 +16,10 @@ from .tools import (
     spotify_curator_generate_mood,
     spotify_curator_generate_weekly,
     spotify_curator_get_reports,
+    spotify_curator_get_tuning,
     spotify_curator_refresh_profile,
     spotify_curator_status,
+    spotify_curator_update_tuning,
 )
 
 
@@ -44,6 +46,8 @@ __all__ = [
     "spotify_curator_generate_mood",
     "spotify_curator_generate_weekly",
     "spotify_curator_get_reports",
+    "spotify_curator_get_tuning",
+    "spotify_curator_update_tuning",
     "TOOL_REGISTRY",
     "register_tools",
 ]

@@ -58,6 +58,39 @@ Drop `--dry-run` to write a private playlist to your account. To run it as an ag
 [deploy/README.md](deploy/README.md): OAuth runs once on the host, and the container reads the
 token from a read-only mount.
 
+## Drive it from any AI agent (MCP)
+
+`spotify-curator-mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server, so
+Claude, Codex, OpenClaw, Hermes or any MCP client can check status, preview and build playlists,
+and **tune the ranking of a running deployment** ("fewer big names", "use post-rock for focus").
+Tuning is saved in `$SPOTIFY_CURATOR_HOME/tuning.json` and applies to every later run.
+
+| Tool | Does | Writes |
+|---|---|---|
+| `get_status` | Auth, profile age, Last.fm config | |
+| `refresh_profile` | Rebuild the taste profile from Spotify | local profile |
+| `discover` | Rank emerging artists for a Last.fm tag | |
+| `create_mood_playlist` | One mood playlist; `dry_run` previews | Spotify |
+| `create_weekly_playlists` | All six moods | Spotify |
+| `get_reports` | Past runs and playlist URLs | |
+| `get_tuning` / `update_tuning` | Read and change ranking settings and mood tags | local tuning |
+
+Tools carry read-only and destructive hints, so clients can ask before anything writes to Spotify.
+
+```bash
+# Local, over stdio
+claude mcp add spotify-curator -- spotify-curator-mcp
+codex mcp add spotify-curator -- spotify-curator-mcp
+
+# Deployed (docker compose service `mcp`, port 8788), over HTTP with a bearer token
+claude mcp add --transport http spotify-curator http://<host>:8788/mcp \
+  --header "Authorization: Bearer $SPOTIFY_CURATOR_MCP_TOKEN"
+```
+
+Any other client: command `spotify-curator-mcp` (stdio), or URL `http://<host>:8788/mcp` with
+header `Authorization: Bearer <token>`. HTTP refuses to listen beyond localhost without
+`SPOTIFY_CURATOR_MCP_TOKEN`; `GET /health` stays open for health checks.
+
 <details>
 <summary><b>Configuration</b></summary>
 
@@ -69,6 +102,8 @@ token from a read-only mount.
 | `SPOTIFY_CURATOR_HOME` | Profile, caches, token, reports | `~/.spotify-curator` |
 | `SPOTIPY_CACHE_PATH` | Token file location (Docker mounts it read-only) | `$SPOTIFY_CURATOR_HOME/.cache` |
 | `SPOTIPY_OPEN_BROWSER` | Set `false` on headless hosts | `true` |
+| `SPOTIFY_CURATOR_MCP_TOKEN` | MCP over HTTP: bearer token clients must send | none (HTTP is then localhost-only) |
+| `SPOTIFY_CURATOR_MCP_HOST`, `_PORT` | MCP over HTTP: bind address | `127.0.0.1`, `8788` |
 
 </details>
 
@@ -80,9 +115,10 @@ Checked end to end against a real Spotify account on 2026-11-26.
 |---|---|
 | CLI: profile → discover → rank → playlist | ✅ Works live: 30-track private playlist, 15 of 15 artists found on Spotify |
 | Profile genres from Last.fm tags | ✅ Works live: 144 genres from 127 artists |
-| Docker image with Hermes Agent skill (6 tools) | ✅ Builds and imports in CI · ⏳ not yet run against a live agent |
+| Docker image with Hermes Agent skill (8 tools) | ✅ Builds and imports in CI · ⏳ not yet run against a live agent |
 | ListenBrainz, MusicBrainz, Reddit sources | ✅ Unit-tested · ⏳ not used by `playlist create` yet |
 | Track choice | ⚠️ Takes the newest release; Spotify's album lists carry no popularity ([FP_PLAN](docs/FP_PLAN.md#known-issues-code-review-2026-11-26)) |
+| MCP server: 8 tools, stdio and HTTP, persistent tuning | ✅ Checked with a real MCP client over stdio and HTTP |
 | Weekly digest daemon (FP-9) | 🚧 Scheduler and IPC done; the digest pipeline is a stub |
 | Web UI (FP-8) | 📋 Planned |
 
@@ -144,13 +180,14 @@ src/
   discovery/      Last.fm, ListenBrainz, MusicBrainz, Reddit + ranking
   playlist/       resolve, pick tracks, shuffle, write
   cli/            Typer CLI
-  hermes_skill/   the same pipeline as 6 agent tools
+  hermes_skill/   the same pipeline as 8 agent tools
+  mcp_server.py   the same tools over MCP (stdio and HTTP)
   daemon/         scheduler and IPC (digest is a stub)
   config.py       .env loading and DATA_DIR
 skills/           Hermes skill definition and references
 deploy/           Dockerfile, compose, host-side OAuth script
 docs/             backlog, architecture, v0.2 plan
-tests/            246 tests, fixtures and cassettes
+tests/            262 tests, fixtures and cassettes
 ```
 
 ## License
