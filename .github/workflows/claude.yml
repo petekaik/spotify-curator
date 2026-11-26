@@ -1,5 +1,5 @@
 # Claude Code in the loop: reviews every PR, and acts on "@claude" in issues and comments.
-# Inactive until the ANTHROPIC_API_KEY secret exists and the Claude GitHub App is installed
+# Inactive until a CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret exists and the Claude GitHub App is installed
 # (run /install-github-app in Claude Code to set up both).
 name: Claude
 
@@ -24,10 +24,10 @@ jobs:
     if: github.event_name == 'pull_request' && !github.event.pull_request.draft
     runs-on: ubuntu-latest
     env:
-      HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+      HAS_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '' }}
     steps:
       - if: env.HAS_KEY != 'true'
-        run: echo "::notice::ANTHROPIC_API_KEY not set; skipping Claude review."
+        run: echo "::notice::No Claude credentials set; skipping Claude review."
       - if: env.HAS_KEY == 'true'
         uses: actions/checkout@v7
         with:
@@ -35,6 +35,7 @@ jobs:
       - if: env.HAS_KEY == 'true'
         uses: anthropics/claude-code-action@v1
         with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: |
             Review pull request #${{ github.event.pull_request.number }} in ${{ github.repository }}.
@@ -52,7 +53,7 @@ jobs:
       (github.event_name == 'issues' && contains(format('{0} {1}', github.event.issue.title, github.event.issue.body), '@claude'))
     runs-on: ubuntu-latest
     env:
-      HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+      HAS_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '' }}
     steps:
       - if: env.HAS_KEY == 'true'
         uses: actions/checkout@v7
@@ -61,4 +62,5 @@ jobs:
       - if: env.HAS_KEY == 'true'
         uses: anthropics/claude-code-action@v1
         with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
