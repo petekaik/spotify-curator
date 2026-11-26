@@ -39,7 +39,8 @@ flowchart LR
    playlist creation.
 3. **Rank.** The score rewards genre overlap with your profile and a small audience
    (log-scaled Last.fm listeners), and penalises artists above 50,000 listeners.
-4. **Build.** Each candidate is matched to a Spotify artist by exact name, two tracks are picked,
+4. **Build.** Each candidate is matched to a Spotify artist by exact name, its two most-played
+   songs on Last.fm are found on Spotify,
    and the playlist is shuffled so the same artist never plays twice in a row.
 
 ## Quick start
@@ -117,7 +118,7 @@ Checked end to end against a real Spotify account on 2026-11-26.
 | Profile genres from Last.fm tags | ✅ Works live: 144 genres from 127 artists |
 | Docker image with Hermes Agent skill (8 tools) | ✅ Builds and imports in CI · ⏳ not yet run against a live agent |
 | ListenBrainz, MusicBrainz, Reddit sources | ✅ Unit-tested · ⏳ not used by `playlist create` yet |
-| Track choice | ⚠️ Takes the newest release; Spotify's album lists carry no popularity ([FP_PLAN](docs/FP_PLAN.md#known-issues-code-review-2026-11-26)) |
+| Track choice | ✅ Works live: each artist's most-played songs on Last.fm, matched on Spotify by artist ID |
 | MCP server: 8 tools, stdio and HTTP, persistent tuning | ✅ Checked with a real MCP client over stdio and HTTP |
 | Weekly digest daemon (FP-9) | 🚧 Scheduler and IPC done; the digest pipeline is a stub |
 | Web UI (FP-8) | 📋 Planned |
@@ -134,7 +135,7 @@ tests, took one day (2026-07-08).
 flowchart LR
     I["Issue<br/>(Feature form:<br/>story, criteria, WSJF)"] --> B[Ranked backlog<br/>docs/FP_PLAN.md]
     B --> D["Agent builds it<br/>test first, per CLAUDE.md"]
-    D --> PR[Pull request<br/>template + Claude review]
+    D --> PR[Pull request<br/>template + @claude review]
     PR --> G{CI gates}
     G -->|pass| M[main]
     M --> RL[Tag vX.Y.Z →<br/>GitHub release<br/>from CHANGELOG]
@@ -147,7 +148,8 @@ flowchart LR
 | **Design** | [Architecture](docs/ARCHITECTURE.md), design notes per FP; agent rules in [CLAUDE.md](CLAUDE.md) |
 | **Development** | Test first; tests never call real APIs (mocks and [vcrpy](https://vcrpy.readthedocs.io) cassettes); `pre-commit` runs ruff and a secret scan |
 | **QA** | [CI](.github/workflows/ci.yml): ruff lint and format, 246 tests on Python 3.12 and 3.13, coverage gate 80% (84% today), live end-to-end check before release |
-| **Review** | [PR template](.github/PULL_REQUEST_TEMPLATE.md) records what the agent did and what a human decided; [Claude Code review](.github/workflows/claude.yml) on every PR, and `@claude` in an issue to delegate work |
+| **Evaluation** | [Ranker harness](evals/REPORT.md): the real ranker on frozen real data, four quality metrics gated against a baseline, and checks that each tuning knob does what it claims |
+| **Review** | [PR template](.github/PULL_REQUEST_TEMPLATE.md) records what the agent did and what a human decided; [Claude Code](.github/workflows/claude.yml) on demand: `@claude review` on a PR, or `@claude` in an issue to delegate work (Haiku, to keep usage low) |
 | **Security** | [CodeQL](.github/workflows/codeql.yml) weekly and on PRs, [Dependabot](.github/dependabot.yml) for pip, Actions and the Docker base image, no secrets in git |
 | **Ops** | Docker image built and smoke-tested in CI; headless OAuth via a host-side script; config through one module ([src/config.py](src/config.py)) |
 | **Release** | [Keep a Changelog](CHANGELOG.md); pushing a `vX.Y.Z` tag publishes the notes as a [GitHub release](.github/workflows/release.yml) |

@@ -303,7 +303,7 @@ def spotify_curator_generate_mood(
 
         sp = mods["get_spotify_client"]()
         api = mods["SpotifyAPIv2"](sp)
-        builder = mods["PlaylistBuilder"](api)
+        builder = mods["PlaylistBuilder"](api, top_tracks=lfm.artist_top_tracks)
 
         if name is None:
             week = datetime.now().strftime("%Y-W%V")

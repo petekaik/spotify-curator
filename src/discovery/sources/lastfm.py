@@ -243,6 +243,15 @@ class LastfmClient:
         a = data.get("artist", {})
         return self._parse_artist(a, include_similar=True)
 
+    def artist_top_tracks(self, artist: str, limit: int = 10) -> list[str]:
+        """Track names by Last.fm play count, most played first. [] on any failure."""
+        try:
+            data = self._call("artist.getTopTracks", artist=artist, limit=limit, autocorrect=1)
+        except Exception as e:
+            log.debug(f"artist.getTopTracks failed for {artist}: {e}")
+            return []
+        return [t["name"] for t in data.get("toptracks", {}).get("track", []) if t.get("name")]
+
     def artist_get_similar(
         self,
         artist: str,

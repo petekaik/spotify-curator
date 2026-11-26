@@ -14,7 +14,9 @@ from __future__ import annotations
 
 import logging
 import random
+import re
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from src.discovery.ranking import Candidate
@@ -49,6 +51,11 @@ class BuiltPlaylist:
     spotify_playlist_id: str | None = None  # populated after write
 
 
+def _base_title(name: str) -> str:
+    """'Song - Remastered 2011' / 'Song (Live)' -> 'song'."""
+    return re.split(r" - | \(| \[", name.lower(), maxsplit=1)[0].strip()
+
+
 class PlaylistBuilder:
     """Build a Spotify playlist from ranked candidates.
 
@@ -61,8 +68,16 @@ class PlaylistBuilder:
         >>> print(f"https://open.spotify.com/playlist/{pl.spotify_playlist_id}")
     """
 
-    def __init__(self, api: SpotifyAPIv2, min_request_interval: float = 0.1):
+    def __init__(
+        self,
+        api: SpotifyAPIv2,
+        min_request_interval: float = 0.1,
+        top_tracks: Callable[[str], list[str]] | None = None,
+    ):
+        """top_tracks: artist name -> track names, most played first (e.g. Last.fm). Spotify no
+        longer reports popularity, so without it tracks come in Spotify's album order."""
         self._api = api
+        self._top_tracks = top_tracks
         self._min_interval = min_request_interval
         self._last_request = 0.0
 
@@ -119,6 +134,33 @@ class PlaylistBuilder:
     # 2. Fetch top tracks per artist
     # ────────────────────────────────────────────────────────────
 
+    def _known_tracks(self, artist: str, artist_id: str, n: int) -> list[dict]:
+        """The artist's most-played songs (per top_tracks), found on Spotify by exact artist ID."""
+        if not self._top_tracks:
+            return []
+        found: list[dict] = []
+        for title in self._top_tracks(artist)[: n * 3]:
+            if len(found) == n:
+                break
+            self._throttle()
+            q = f'track:"{title}" artist:"{artist}"'
+            items = self._api._sp._get("search", q=q, type="track", limit=5)["tracks"]["items"]
+            mine = [t for t in items if artist_id in {a["id"] for a in t["artists"]}]
+            exact = [t for t in mine if t["name"].lower() == title.lower()]
+            same_song = [t for t in mine if _base_title(t["name"]) == _base_title(title)]
+            hit = (exact or same_song or [None])[0]
+            if hit and hit["id"] not in {f["id"] for f in found}:
+                found.append(
+                    {
+                        "id": hit["id"],
+                        "name": hit["name"],
+                        "uri": hit["uri"],
+                        "duration_ms": hit.get("duration_ms", 0),
+                        "album_name": hit.get("album", {}).get("name", ""),
+                    }
+                )
+        return found
+
     def fetch_tracks_for_artists(
         self,
         resolved: list[tuple[Candidate, str]],
@@ -140,11 +182,19 @@ class PlaylistBuilder:
         for c, sid in resolved:
             try:
                 self._throttle()
-                tracks = self._api.artist_top_tracks_via_albums(
-                    sid,
-                    max_albums=max_albums_per_artist,
-                    tracks_per_album=tracks_per_artist,
-                )
+                tracks = self._known_tracks(c.name, sid, tracks_per_artist)
+                if len(tracks) < tracks_per_artist:
+                    self._throttle()
+                    have = {t["id"] for t in tracks}
+                    tracks += [
+                        t
+                        for t in self._api.artist_top_tracks_via_albums(
+                            sid,
+                            max_albums=max_albums_per_artist,
+                            tracks_per_album=tracks_per_artist,
+                        )
+                        if t["id"] not in have
+                    ]
                 if tracks:
                     result.append((c, tracks[:tracks_per_artist]))
                 else:

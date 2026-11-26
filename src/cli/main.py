@@ -344,7 +344,7 @@ def playlist_create(
     console.print(f"[green]Ranked {len(ranked)} candidates[/green]")
 
     # Step 3: Build playlist
-    builder = PlaylistBuilder(api)
+    builder = PlaylistBuilder(api, top_tracks=lfm.artist_top_tracks)
     with console.status("Resolving to Spotify IDs and fetching tracks..."):
         playlist = builder.build(
             ranked,
