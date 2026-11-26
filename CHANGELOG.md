@@ -6,6 +6,10 @@ matching section below as a GitHub release.
 
 ## [Unreleased]
 
+### Fixed
+- Tuning: a string for `preferred_geo_tags` or `mood_tags` is rejected (it was saved and matched
+  letter by letter), and `reset` with an invalid change no longer wipes the saved tuning.
+
 ## [0.3.0] - 2026-11-26
 
 ### Added

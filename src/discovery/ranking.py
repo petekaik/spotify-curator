@@ -115,8 +115,12 @@ class TuningConfig:
             raise ValueError(f"penalty_steepness must be in [0, 1], got {self.penalty_steepness}")
         if not (0 < self.discovery_album_full_bonus < self.discovery_album_zero_bonus):
             raise ValueError("need 0 < discovery_album_full_bonus < discovery_album_zero_bonus")
+        if not isinstance(self.preferred_geo_tags, list):
+            raise ValueError('preferred_geo_tags must be a list of tags, e.g. ["finnish"]')
         if not all(isinstance(t, str) and t.strip() for t in self.preferred_geo_tags):
             raise ValueError("preferred_geo_tags must be non-empty strings")
+        if not isinstance(self.mood_tags, dict):
+            raise ValueError("mood_tags must be an object of mood -> tag")
         if set(self.mood_tags) != set(DEFAULT_MOOD_TAGS):
             raise ValueError(f"mood_tags must have exactly the moods {sorted(DEFAULT_MOOD_TAGS)}")
         if not all(isinstance(t, str) and t.strip() for t in self.mood_tags.values()):
@@ -148,14 +152,18 @@ def save_tuning(cfg: TuningConfig, path=None) -> None:
     tmp.replace(path)
 
 
-def update_tuning(changes: dict, path=None) -> TuningConfig:
-    """Apply a partial change set (mood_tags merges per mood) and save it."""
+def update_tuning(changes: dict, path=None, reset: bool = False) -> TuningConfig:
+    """Apply a partial change set (mood_tags merges per mood) and save it.
+
+    reset=True starts from the defaults. Nothing is written unless the result is valid."""
     known = {f.name for f in fields(TuningConfig)}
     unknown = set(changes) - known
     if unknown:
         raise ValueError(f"unknown tuning keys: {sorted(unknown)}; valid: {sorted(known)}")
-    current = load_tuning(path)
+    current = TuningConfig() if reset else load_tuning(path)
     if "mood_tags" in changes:
+        if not isinstance(changes["mood_tags"], dict):
+            raise ValueError("mood_tags must be an object of mood -> tag")
         changes = {**changes, "mood_tags": {**current.mood_tags, **changes["mood_tags"]}}
     cfg = replace(current, **changes)
     save_tuning(cfg, path)
