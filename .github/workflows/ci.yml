@@ -20,9 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
-      - run: uvx ruff check --output-format=github src tests
-      - run: uvx ruff format --check src tests
+      # Same ruff version as .pre-commit-config.yaml
+      - run: pipx run ruff==0.17.6 check --output-format=github src tests
+      - run: pipx run ruff==0.17.6 format --check src tests
 
   test:
     name: Tests (Python ${{ matrix.python-version }})
