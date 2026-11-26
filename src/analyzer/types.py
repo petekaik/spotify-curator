@@ -4,33 +4,35 @@ These dataclasses are the canonical shapes used across the analyzer,
 discovery, ranking, and playlist modules. They double as the Parquet
 schema for cached profiles.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Optional
 
 
 @dataclass
 class ArtistRef:
     """Lightweight reference to a Spotify artist."""
+
     id: str
     name: str
     genres: list[str] = field(default_factory=list)
-    popularity: Optional[int] = None  # may be None for artists fetched after Feb 2026
+    popularity: int | None = None  # may be None for artists fetched after Feb 2026
     followers: int = 0
 
 
 @dataclass
 class TrackRef:
     """Lightweight reference to a Spotify track."""
+
     id: str
     name: str
     uri: str
     artist_ids: list[str] = field(default_factory=list)
     artist_names: list[str] = field(default_factory=list)
-    album_id: Optional[str] = None
-    album_name: Optional[str] = None
+    album_id: str | None = None
+    album_name: str | None = None
     duration_ms: int = 0
     popularity: int = 0
 
@@ -38,8 +40,9 @@ class TrackRef:
 @dataclass
 class TimeRangeData:
     """Top-list data for a specific time range."""
-    time_range: str          # "short_term" | "medium_term" | "long_term"
-    weight: float            # 0.0-1.0, how much to weight this in profile
+
+    time_range: str  # "short_term" | "medium_term" | "long_term"
+    weight: float  # 0.0-1.0, how much to weight this in profile
     artists: list[ArtistRef] = field(default_factory=list)
     tracks: list[TrackRef] = field(default_factory=list)
 
@@ -51,6 +54,7 @@ class TrackFeatures:
     NOTE: Spotify deprecated audio-features in Nov 2024, but it still works
     as of mid-2026. We'll need a fallback if it goes away.
     """
+
     tempo: float = 0.0
     energy: float = 0.0
     valence: float = 0.0
@@ -68,14 +72,17 @@ class UserProfile:
     Built from Spotify's top-artists and top-tracks across three time windows,
     weighted by recency. Persisted as Parquet for fast reload.
     """
+
     user_id: str
     updated_at: datetime
-    genre_weights: dict[str, float] = field(default_factory=dict)      # normalized 0-1
-    artist_weights: dict[str, float] = field(default_factory=dict)     # artist_id → weight (sums to 1)
-    time_ranges: dict[str, TimeRangeData] = field(default_factory=dict)  # "short_term" → TimeRangeData(...)
+    genre_weights: dict[str, float] = field(default_factory=dict)  # normalized 0-1
+    artist_weights: dict[str, float] = field(default_factory=dict)  # artist_id → weight (sums to 1)
+    time_ranges: dict[str, TimeRangeData] = field(
+        default_factory=dict
+    )  # "short_term" → TimeRangeData(...)
     saved_album_ids: list[str] = field(default_factory=list)
     saved_track_ids: list[str] = field(default_factory=list)
-    features_centroid: Optional[TrackFeatures] = None
+    features_centroid: TrackFeatures | None = None
     # Metadata about the build
     total_artists: int = 0
     total_tracks: int = 0
@@ -108,7 +115,7 @@ class UserProfile:
         return d
 
     @classmethod
-    def from_dict(cls, d: dict) -> "UserProfile":
+    def from_dict(cls, d: dict) -> UserProfile:
         """Reconstruct from Parquet dict."""
         updated_at = d["updated_at"]
         if isinstance(updated_at, str):

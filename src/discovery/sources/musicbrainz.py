@@ -10,6 +10,7 @@ Used as the **secondary** discovery source because:
 - No rate limits to speak of (1 req/sec is the polite recommendation)
 - Works for "obscure but established" artists that Last.fm might miss
 """
+
 from __future__ import annotations
 
 import json
@@ -18,15 +19,13 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from src.config import DATA_DIR
-from typing import Optional
-
 import musicbrainzngs
+
+from src.config import DATA_DIR
 
 log = logging.getLogger(__name__)
 
-USER_AGENT = ("spotify-curator", "0.2.0",
-              "https://github.com/petekaik/spotify-curator")
+USER_AGENT = ("spotify-curator", "0.2.0", "https://github.com/petekaik/spotify-curator")
 DEFAULT_CACHE_DIR = DATA_DIR / "musicbrainz_cache"
 RATE_LIMIT_SECONDS = 1.0  # MusicBrainz recommends 1 req/sec
 
@@ -34,15 +33,16 @@ RATE_LIMIT_SECONDS = 1.0  # MusicBrainz recommends 1 req/sec
 @dataclass
 class MusicBrainzArtist:
     """Artist data from MusicBrainz."""
+
     name: str
-    mbid: str                          # MusicBrainz ID
+    mbid: str  # MusicBrainz ID
     sort_name: str = ""
-    artist_type: str = ""              # "Person", "Group", "Orchestra", etc.
+    artist_type: str = ""  # "Person", "Group", "Orchestra", etc.
     country: str = ""
-    begin_year: Optional[int] = None   # formed year
-    end_year: Optional[int] = None     # disbanded year (None if active)
+    begin_year: int | None = None  # formed year
+    end_year: int | None = None  # disbanded year (None if active)
     tags: list[tuple[str, int]] = field(default_factory=list)  # (tag, count)
-    genres: list[str] = field(default_factory=list)            # structured genres
+    genres: list[str] = field(default_factory=list)  # structured genres
 
 
 class MusicBrainzClient:
@@ -84,10 +84,11 @@ class MusicBrainzClient:
 
     def _cache_path(self, key: str) -> Path:
         import hashlib
+
         h = hashlib.sha256(key.encode()).hexdigest()[:16]
         return self._cache_dir / f"{h}.json"
 
-    def _get_cached(self, key: str) -> Optional[dict]:
+    def _get_cached(self, key: str) -> dict | None:
         path = self._cache_path(key)
         if not path.exists():
             return None
@@ -139,7 +140,7 @@ class MusicBrainzClient:
     # Public API methods
     # ────────────────────────────────────────────────────────────
 
-    def get_artist_by_mbid(self, mbid: str) -> Optional[MusicBrainzArtist]:
+    def get_artist_by_mbid(self, mbid: str) -> MusicBrainzArtist | None:
         """Get full artist data by MusicBrainz ID.
 
         Args:
@@ -243,7 +244,8 @@ class MusicBrainzClient:
         """
         try:
             return self._call(
-                "get_artist_by_id", mbid,
+                "get_artist_by_id",
+                mbid,
                 includes=["artist-rels", "release-rels"],
             )
         except Exception as e:

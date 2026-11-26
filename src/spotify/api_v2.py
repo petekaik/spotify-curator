@@ -10,7 +10,9 @@ Key endpoints this wraps:
 - POST /playlists/{id}/items (replaces /playlists/{id}/tracks)
 - Album-based top tracks (since /artists/{id}/top-tracks was removed)
 """
-from typing import Any, Optional
+
+from typing import Any
+
 import spotipy
 
 
@@ -88,7 +90,7 @@ class SpotifyAPIv2:
         playlist_id: str,
         limit: int = 100,
         offset: int = 0,
-        fields: Optional[str] = None,
+        fields: str | None = None,
     ) -> dict[str, Any]:
         """Get items in a playlist (NEW endpoint).
 
@@ -189,19 +191,21 @@ class SpotifyAPIv2:
                     continue
                 seen_track_ids.add(track["id"])
                 # Enrich with album metadata
-                all_tracks.append({
-                    "id": track["id"],
-                    "name": track["name"],
-                    "uri": track["uri"],
-                    "popularity": track.get("popularity", 0),  # track-level
-                    "duration_ms": track.get("duration_ms", 0),
-                    "explicit": track.get("explicit", False),
-                    "preview_url": track.get("preview_url"),
-                    "album_name": album["name"],
-                    "album_popularity": album.get("popularity", 0),
-                    "album_release_date": album.get("release_date", ""),
-                    "album_id": album["id"],
-                })
+                all_tracks.append(
+                    {
+                        "id": track["id"],
+                        "name": track["name"],
+                        "uri": track["uri"],
+                        "popularity": track.get("popularity", 0),  # track-level
+                        "duration_ms": track.get("duration_ms", 0),
+                        "explicit": track.get("explicit", False),
+                        "preview_url": track.get("preview_url"),
+                        "album_name": album["name"],
+                        "album_popularity": album.get("popularity", 0),
+                        "album_release_date": album.get("release_date", ""),
+                        "album_id": album["id"],
+                    }
+                )
 
         # Sort by album_popularity then track popularity
         all_tracks.sort(

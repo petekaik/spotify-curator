@@ -1,31 +1,30 @@
 """Unit tests for FP-9 daemon mode (scheduler + workflow + IPC)."""
+
+import contextlib
 import json
 import time
-import pytest
 from datetime import datetime
-from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from src.daemon.scheduler import (
+    HAVE_APSCHEDULER,
     CuratorScheduler,
     SchedulerConfig,
-    JobResult,
-    HAVE_APSCHEDULER,
     default_weekly_digest,
 )
 from src.daemon.workflow import (
     WeeklyReport,
+    process_commands,
     run_weekly_digest,
     send_command,
-    process_commands,
-    COMMAND_FILE,
-    RESPONSE_DIR,
 )
-
 
 # ────────────────────────────────────────────────────────────
 # Scheduler config
 # ────────────────────────────────────────────────────────────
+
 
 class TestSchedulerConfig:
     def test_defaults(self):
@@ -46,6 +45,7 @@ class TestSchedulerConfig:
 # CuratorScheduler
 # ────────────────────────────────────────────────────────────
 
+
 @pytest.mark.skipif(not HAVE_APSCHEDULER, reason="APScheduler not installed")
 class TestCuratorScheduler:
     def test_builds_default_scheduler(self):
@@ -62,8 +62,10 @@ class TestCuratorScheduler:
 
     def test_schedule_weekly_digest(self):
         sched = CuratorScheduler()
+
         def my_job():
             return "ran"
+
         sched.schedule_weekly_digest(my_job, job_id="test_digest")
         jobs = sched.list_jobs()
         assert any(j["id"] == "test_digest" for j in jobs)
@@ -71,8 +73,10 @@ class TestCuratorScheduler:
 
     def test_schedule_custom(self):
         sched = CuratorScheduler()
+
         def my_job():
             return "ran"
+
         sched.schedule_custom(
             my_job,
             trigger_args={"hour": 9, "minute": 0},
@@ -84,8 +88,10 @@ class TestCuratorScheduler:
 
     def test_schedule_interval(self):
         sched = CuratorScheduler()
+
         def my_job():
             return "ran"
+
         sched.schedule_interval(my_job, hours=6, job_id="interval_job")
         jobs = sched.list_jobs()
         assert any(j["id"] == "interval_job" for j in jobs)
@@ -93,8 +99,10 @@ class TestCuratorScheduler:
 
     def test_remove_job(self):
         sched = CuratorScheduler()
+
         def my_job():
             return "ran"
+
         sched.schedule_weekly_digest(my_job, job_id="to_remove")
         assert sched.remove_job("to_remove")
         jobs = sched.list_jobs()
@@ -104,7 +112,7 @@ class TestCuratorScheduler:
     def test_remove_nonexistent_job(self):
         sched = CuratorScheduler()
         # Should not raise
-        result = sched.remove_job("does_not_exist")
+        sched.remove_job("does_not_exist")
         # remove_job may return False or raise depending on apscheduler version
         # Just verify it doesn't crash
         sched.shutdown(wait=False)
@@ -123,6 +131,7 @@ class TestCuratorScheduler:
 # ────────────────────────────────────────────────────────────
 # WeeklyReport
 # ────────────────────────────────────────────────────────────
+
 
 class TestWeeklyReport:
     def test_empty_report(self):
@@ -147,8 +156,16 @@ class TestWeeklyReport:
             candidates_after_dedup=30,
             playlists_generated=2,
             playlists=[
-                {"mood": "cheerful", "url": "https://open.spotify.com/playlist/abc", "track_count": 25},
-                {"mood": "calming", "url": "https://open.spotify.com/playlist/def", "track_count": 20},
+                {
+                    "mood": "cheerful",
+                    "url": "https://open.spotify.com/playlist/abc",
+                    "track_count": 25,
+                },
+                {
+                    "mood": "calming",
+                    "url": "https://open.spotify.com/playlist/def",
+                    "track_count": 20,
+                },
             ],
             sources=["lastfm", "musicbrainz"],
         )
@@ -194,6 +211,7 @@ class TestWeeklyReport:
 # run_weekly_digest workflow
 # ────────────────────────────────────────────────────────────
 
+
 class TestWeeklyDigestWorkflow:
     def test_runs_in_dry_run(self, tmp_path):
         """Dry run should complete without crashing and write a report."""
@@ -225,8 +243,10 @@ class TestWeeklyDigestWorkflow:
     def test_captures_errors_gracefully(self, tmp_path):
         """If a step fails, the workflow should still produce a report."""
         # Force an error in the discovery step
-        with patch("src.discovery.sources.lastfm.get_top_artists_for_tag",
-                   side_effect=Exception("API down")):
+        with patch(
+            "src.discovery.sources.lastfm.get_top_artists_for_tag",
+            side_effect=Exception("API down"),
+        ):
             result = run_weekly_digest(
                 profile_user_id="test_user",
                 report_dir=tmp_path,
@@ -259,6 +279,7 @@ class TestWeeklyDigestWorkflow:
 # IPC (file-based command queue)
 # ────────────────────────────────────────────────────────────
 
+
 class TestIPC:
     def test_send_command_status(self, tmp_path, monkeypatch):
         """send_command should write a request file and wait for response."""
@@ -272,6 +293,7 @@ class TestIPC:
 
         # Pre-write a response so send_command returns quickly
         from threading import Thread
+
         def write_response():
             time.sleep(0.2)
             # Read the request to get its ID
@@ -285,6 +307,7 @@ class TestIPC:
                 (resp_dir / f"{req_id}.json").write_text(
                     json.dumps({"status": "ok", "echo": request["command"]})
                 )
+
         Thread(target=write_response, daemon=True).start()
 
         result = send_command("status", timeout_seconds=5.0)
@@ -313,23 +336,27 @@ class TestIPC:
         monkeypatch.setattr("src.daemon.workflow.RESPONSE_DIR", resp_dir)
 
         # Write a command request
-        cmd_file.write_text(json.dumps({
-            "request_id": "test123",
-            "command": "ping",
-            "args": {},
-        }))
+        cmd_file.write_text(
+            json.dumps(
+                {
+                    "request_id": "test123",
+                    "command": "ping",
+                    "args": {},
+                }
+            )
+        )
 
         callback = MagicMock(return_value={"status": "pong"})
 
         # Run process_commands in a thread and kill it after one iteration
         import threading
+
         def run_for_a_bit():
             # Patch sleep so we don't wait 1 second
             with patch("src.daemon.workflow.time.sleep", side_effect=SystemExit):
-                try:
+                with contextlib.suppress(SystemExit):
                     process_commands(callback)
-                except SystemExit:
-                    pass
+
         t = threading.Thread(target=run_for_a_bit, daemon=True)
         t.start()
         t.join(timeout=3.0)
@@ -358,20 +385,24 @@ class TestIPC:
         monkeypatch.setattr("src.daemon.workflow.RESPONSE_DIR", resp_dir)
 
         # Write a command
-        cmd_file.write_text(json.dumps({
-            "request_id": "err1",
-            "command": "explode",
-        }))
+        cmd_file.write_text(
+            json.dumps(
+                {
+                    "request_id": "err1",
+                    "command": "explode",
+                }
+            )
+        )
 
         callback = MagicMock(side_effect=ValueError("boom"))
 
         import threading
+
         def run_for_a_bit():
             with patch("src.daemon.workflow.time.sleep", side_effect=SystemExit):
-                try:
+                with contextlib.suppress(SystemExit):
                     process_commands(callback)
-                except SystemExit:
-                    pass
+
         t = threading.Thread(target=run_for_a_bit, daemon=True)
         t.start()
         t.join(timeout=3.0)
@@ -384,6 +415,7 @@ class TestIPC:
 # ────────────────────────────────────────────────────────────
 # default_weekly_digest
 # ────────────────────────────────────────────────────────────
+
 
 class TestDefaultWeeklyDigest:
     def test_default_function_exists(self):

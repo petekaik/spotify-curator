@@ -1,4 +1,5 @@
 """Keep tests away from the real ~/.spotify-curator (profile, token cache, API caches)."""
+
 import os
 import tempfile
 

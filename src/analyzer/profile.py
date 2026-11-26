@@ -12,20 +12,21 @@ Usage:
     >>> print(profile.top_genres(5))
     >>> builder.save()
 """
+
 from __future__ import annotations
 
 import logging
 from datetime import datetime
 
-from src.spotify.api_v2 import SpotifyAPIv2
-from src.analyzer.types import UserProfile
+from src.analyzer.cache import PROFILE_PATH, load_profile, save_profile
 from src.analyzer.fetch import fetch_all_for_profile, fetch_saved_albums
+from src.analyzer.types import UserProfile
 from src.analyzer.weights import (
     compute_artist_weights,
-    compute_genre_weights,
     compute_features_centroid,
+    compute_genre_weights,
 )
-from src.analyzer.cache import save_profile, load_profile, PROFILE_PATH
+from src.spotify.api_v2 import SpotifyAPIv2
 
 log = logging.getLogger(__name__)
 
@@ -107,8 +108,7 @@ class ProfileBuilder:
             total_genres=total_genres,
         )
         log.info(
-            f"Profile built: {total_artists} artists, "
-            f"{total_genres} genres, {total_tracks} tracks"
+            f"Profile built: {total_artists} artists, {total_genres} genres, {total_tracks} tracks"
         )
         return profile
 
@@ -120,6 +120,7 @@ class ProfileBuilder:
         lastfm = self._lastfm
         if lastfm is None:
             from src.discovery.sources.lastfm import LastfmClient
+
             lastfm = LastfmClient()
         if not lastfm._api_key:
             log.warning("No Spotify genres and no LASTFM_API_KEY: profile will have no genres")

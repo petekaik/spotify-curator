@@ -1,14 +1,12 @@
 """Unit tests for MusicBrainz client (FP-3b)."""
-import json
-import pytest
-from unittest.mock import patch, MagicMock
+
+from unittest.mock import patch
 
 from src.discovery.sources.musicbrainz import (
-    MusicBrainzClient,
     MusicBrainzArtist,
+    MusicBrainzClient,
     search_artist_by_name,
 )
-
 
 # ────────────────────────────────────────────────────────────
 # Sample API responses
@@ -61,6 +59,7 @@ SAMPLE_SEARCH_RESULT = {
 # Parsing tests
 # ────────────────────────────────────────────────────────────
 
+
 class TestParsing:
     def test_parse_full_artist(self):
         client = MusicBrainzClient()
@@ -105,7 +104,8 @@ class TestParsing:
     def test_parse_handles_end_year(self):
         client = MusicBrainzClient()
         raw = {
-            "id": "x", "name": "Disbanded Band",
+            "id": "x",
+            "name": "Disbanded Band",
             "life-span": {"ended": "true", "begin": "1990", "end": "2005-08"},
         }
         parsed = client._parse_artist(raw)
@@ -128,10 +128,13 @@ class TestParsing:
 # API method tests (with mocked musicbrainzngs)
 # ────────────────────────────────────────────────────────────
 
+
 class TestGetArtistByMbid:
     def test_success(self, tmp_path):
         client = MusicBrainzClient(cache_dir=tmp_path)
-        with patch.object(client, "_call", return_value={"artist": SAMPLE_ARTIST_FULL}) as mock_call:
+        with patch.object(
+            client, "_call", return_value={"artist": SAMPLE_ARTIST_FULL}
+        ) as mock_call:
             artist = client.get_artist_by_mbid("a74b1b7f-71a5-4011-9441-d0b5e4122711")
         assert artist.name == "Radiohead"
         assert artist.country == "United Kingdom"
@@ -155,9 +158,9 @@ class TestGetArtistByMbid:
 
     def test_response_error_returns_none(self, tmp_path):
         import musicbrainzngs
+
         client = MusicBrainzClient(cache_dir=tmp_path)
-        with patch.object(client, "_call",
-                          side_effect=musicbrainzngs.ResponseError("Not Found")):
+        with patch.object(client, "_call", side_effect=musicbrainzngs.ResponseError("Not Found")):
             artist = client.get_artist_by_mbid("invalid")
         assert artist is None
 
@@ -202,34 +205,48 @@ class TestSearch:
 # Caching tests
 # ────────────────────────────────────────────────────────────
 
+
 class TestCaching:
     def test_caches_response(self, tmp_path):
         """Second call should be served from cache."""
         client = MusicBrainzClient(cache_dir=tmp_path, cache_ttl_seconds=3600)
         # Mock the underlying musicbrainzngs function, NOT _call itself
         call_count = 0
+
         def fake_get_artist(mbid, includes=None):
             nonlocal call_count
             call_count += 1
             return {"artist": SAMPLE_ARTIST_FULL}
-        with patch("src.discovery.sources.musicbrainz.musicbrainzngs.get_artist_by_id",
-                   side_effect=fake_get_artist), \
-             patch.object(client, "_throttle"):
+
+        with (
+            patch(
+                "src.discovery.sources.musicbrainz.musicbrainzngs.get_artist_by_id",
+                side_effect=fake_get_artist,
+            ),
+            patch.object(client, "_throttle"),
+        ):
             client.get_artist_by_mbid("test-mbid")
             client.get_artist_by_mbid("test-mbid")
         assert call_count == 1  # second call cached
 
     def test_cache_expires(self, tmp_path):
         import time
+
         client = MusicBrainzClient(cache_dir=tmp_path, cache_ttl_seconds=0)
         call_count = 0
+
         def fake_get_artist(mbid, includes=None):
             nonlocal call_count
             call_count += 1
             return {"artist": SAMPLE_ARTIST_FULL}
-        with patch("src.discovery.sources.musicbrainz.musicbrainzngs.get_artist_by_id",
-                   side_effect=fake_get_artist), \
-             patch.object(client, "_throttle"):
+
+        with (
+            patch(
+                "src.discovery.sources.musicbrainz.musicbrainzngs.get_artist_by_id",
+                side_effect=fake_get_artist,
+            ),
+            patch.object(client, "_throttle"),
+        ):
             client.get_artist_by_mbid("test-mbid")
             time.sleep(0.01)
             client.get_artist_by_mbid("test-mbid")
@@ -238,9 +255,13 @@ class TestCaching:
     def test_throttle_called(self, tmp_path):
         """Verify throttle is called between requests."""
         client = MusicBrainzClient(cache_dir=tmp_path)
-        with patch.object(client, "_throttle") as mock_throttle, \
-             patch("src.discovery.sources.musicbrainz.musicbrainzngs.get_artist_by_id",
-                   return_value={"artist": SAMPLE_ARTIST_FULL}):
+        with (
+            patch.object(client, "_throttle") as mock_throttle,
+            patch(
+                "src.discovery.sources.musicbrainz.musicbrainzngs.get_artist_by_id",
+                return_value={"artist": SAMPLE_ARTIST_FULL},
+            ),
+        ):
             client.get_artist_by_mbid("x")
         mock_throttle.assert_called()
 
@@ -249,10 +270,12 @@ class TestCaching:
 # Helper / convenience tests
 # ────────────────────────────────────────────────────────────
 
+
 class TestHelpers:
     def test_get_top_tags(self):
         artist = MusicBrainzArtist(
-            name="X", mbid="x",
+            name="X",
+            mbid="x",
             tags=[("rock", 100), ("indie", 50), ("pop", 10)],
         )
         client = MusicBrainzClient()
@@ -261,7 +284,8 @@ class TestHelpers:
 
     def test_get_top_tags_more_than_available(self):
         artist = MusicBrainzArtist(
-            name="X", mbid="x",
+            name="X",
+            mbid="x",
             tags=[("rock", 100)],
         )
         client = MusicBrainzClient()
@@ -270,9 +294,7 @@ class TestHelpers:
     def test_search_artist_by_name_helper(self, tmp_path):
         with patch("src.discovery.sources.musicbrainz.MusicBrainzClient") as MockClient:
             instance = MockClient.return_value
-            instance.search_artists.return_value = [
-                MusicBrainzArtist(name="Test", mbid="x")
-            ]
+            instance.search_artists.return_value = [MusicBrainzArtist(name="Test", mbid="x")]
             results = search_artist_by_name("Test")
         assert len(results) == 1
         instance.search_artists.assert_called_once_with("Test", limit=5)
@@ -282,6 +304,7 @@ class TestHelpers:
 # User-Agent required by MusicBrainz
 # ────────────────────────────────────────────────────────────
 
+
 class TestUserAgent:
     def test_user_agent_set_on_init(self, tmp_path):
         # musicbrainzngs.set_useragent sets internal state but doesn't expose
@@ -290,5 +313,9 @@ class TestUserAgent:
         MusicBrainzClient(cache_dir=tmp_path)  # should not raise
         # Verify USER_AGENT tuple format is correct
         from src.discovery.sources.musicbrainz import USER_AGENT
-        assert USER_AGENT == ("spotify-curator", "0.2.0",
-                             "https://github.com/petekaik/spotify-curator")
+
+        assert USER_AGENT == (
+            "spotify-curator",
+            "0.2.0",
+            "https://github.com/petekaik/spotify-curator",
+        )

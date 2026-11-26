@@ -9,16 +9,16 @@ Flow:
 6. Add tracks via POST /playlists/{id}/items (NEW endpoint, Feb 2026)
 7. Return the playlist ID + URL
 """
+
 from __future__ import annotations
 
 import logging
 import random
 import time
 from dataclasses import dataclass, field
-from typing import Optional
 
-from src.spotify.api_v2 import SpotifyAPIv2
 from src.discovery.ranking import Candidate
+from src.spotify.api_v2 import SpotifyAPIv2
 
 log = logging.getLogger(__name__)
 
@@ -26,7 +26,8 @@ log = logging.getLogger(__name__)
 @dataclass
 class PlaylistTrack:
     """A track to be added to a playlist."""
-    uri: str              # spotify:track:xyz
+
+    uri: str  # spotify:track:xyz
     name: str
     artist_name: str
     album_name: str = ""
@@ -37,14 +38,15 @@ class PlaylistTrack:
 @dataclass
 class BuiltPlaylist:
     """Result of building a playlist (before writing to Spotify)."""
+
     name: str
     description: str
     tracks: list[PlaylistTrack] = field(default_factory=list)
-    candidate_count: int = 0    # how many candidates we started with
-    skipped_no_spotify: int = 0 # candidates not found on Spotify
+    candidate_count: int = 0  # how many candidates we started with
+    skipped_no_spotify: int = 0  # candidates not found on Spotify
     skipped_no_tracks: int = 0  # candidates with no top tracks
     total_artist_count: int = 0
-    spotify_playlist_id: Optional[str] = None  # populated after write
+    spotify_playlist_id: str | None = None  # populated after write
 
 
 class PlaylistBuilder:
@@ -74,7 +76,7 @@ class PlaylistBuilder:
     # 1. Resolve candidates to Spotify artists
     # ────────────────────────────────────────────────────────────
 
-    def _search_spotify_artist(self, candidate: Candidate) -> Optional[str]:
+    def _search_spotify_artist(self, candidate: Candidate) -> str | None:
         """Find the Spotify artist ID for a candidate.
 
         Strategy:
@@ -97,9 +99,7 @@ class PlaylistBuilder:
             log.warning(f"Spotify search failed for {candidate.name}: {e}")
         return None
 
-    def resolve_candidates(
-        self, candidates: list[Candidate]
-    ) -> list[tuple[Candidate, str]]:
+    def resolve_candidates(self, candidates: list[Candidate]) -> list[tuple[Candidate, str]]:
         """Resolve each candidate to a Spotify artist ID.
 
         Returns:
@@ -185,7 +185,7 @@ class PlaylistBuilder:
             return []
 
         # Try a few shuffle attempts
-        for attempt in range(10):
+        for _attempt in range(10):
             random.shuffle(track_pool)
             if not self._has_adjacent_same_artist(track_pool):
                 return [t for _, t in track_pool]
@@ -194,9 +194,7 @@ class PlaylistBuilder:
         track_pool = self._fix_adjacent_swaps(track_pool)
         return [t for _, t in track_pool]
 
-    def _has_adjacent_same_artist(
-        self, track_pool: list[tuple[Candidate, dict]]
-    ) -> bool:
+    def _has_adjacent_same_artist(self, track_pool: list[tuple[Candidate, dict]]) -> bool:
         for i in range(len(track_pool) - 1):
             if track_pool[i][0].name == track_pool[i + 1][0].name:
                 return True
@@ -334,15 +332,13 @@ class PlaylistBuilder:
         )
         playlist.spotify_playlist_id = create_result.get("id")
         if not playlist.spotify_playlist_id:
-            raise RuntimeError(
-                f"Spotify create playlist returned no ID. Response: {create_result}"
-            )
+            raise RuntimeError(f"Spotify create playlist returned no ID. Response: {create_result}")
         log.info(f"Created Spotify playlist: {playlist.spotify_playlist_id}")
 
         # Step 2: Add tracks in batches of 100 (Spotify limit)
         track_uris = [t.uri for t in playlist.tracks]
         for i in range(0, len(track_uris), 100):
-            batch = track_uris[i:i + 100]
+            batch = track_uris[i : i + 100]
             self._throttle()
             self._api.playlist_add_items(playlist.spotify_playlist_id, batch)
             log.info(f"Added {len(batch)} tracks to playlist")

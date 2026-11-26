@@ -11,20 +11,21 @@ Apply for one at https://www.last.fm/api/account/create
 
 API docs: https://www.last.fm/api
 """
+
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from pathlib import Path
-
-from src.config import DATA_DIR
-from typing import Optional
 from urllib.parse import urlencode
 
 import requests
+
+from src.config import DATA_DIR
 
 log = logging.getLogger(__name__)
 
@@ -35,11 +36,12 @@ DEFAULT_CACHE_DIR = DATA_DIR / "lastfm_cache"
 @dataclass
 class LastfmArtist:
     """Artist data from Last.fm."""
+
     name: str
-    mbid: Optional[str] = None           # MusicBrainz ID
+    mbid: str | None = None  # MusicBrainz ID
     url: str = ""
-    playcount: int = 0                   # total scrobbles
-    listeners: int = 0                   # distinct users
+    playcount: int = 0  # total scrobbles
+    listeners: int = 0  # distinct users
     tags: list[str] = field(default_factory=list)
     bio_summary: str = ""
     similar: list[str] = field(default_factory=list)  # similar artist names
@@ -62,6 +64,7 @@ def _cache_path(method: str, params: dict, cache_dir: Path) -> Path:
     key = f"{method}_{json.dumps(params, sort_keys=True)}"
     # Hash to safe filename
     import hashlib
+
     h = hashlib.sha256(key.encode()).hexdigest()[:16]
     return cache_dir / f"{method}_{h}.json"
 
@@ -81,10 +84,10 @@ class LastfmClient:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,  # secretscan:ignore
+        api_key: str | None = None,  # secretscan:ignore
         cache_dir: Path = DEFAULT_CACHE_DIR,
         cache_ttl_seconds: int = 7 * 24 * 3600,  # 1 week
-        min_request_interval: float = 0.25,        # 4 req/s
+        min_request_interval: float = 0.25,  # 4 req/s
     ):
         """Initialize client.
 
@@ -110,7 +113,7 @@ class LastfmClient:
             time.sleep(self._min_interval - elapsed)
         self._last_request = time.time()
 
-    def _get_cached(self, method: str, params: dict) -> Optional[dict]:
+    def _get_cached(self, method: str, params: dict) -> dict | None:
         """Read from cache if fresh."""
         path = _cache_path(method, params, self._cache_dir)
         if not path.exists():
@@ -166,9 +169,7 @@ class LastfmClient:
         data = resp.json()
 
         if "error" in data:
-            raise RuntimeError(
-                f"Last.fm error {data['error']}: {data.get('message')}"
-            )
+            raise RuntimeError(f"Last.fm error {data['error']}: {data.get('message')}")
 
         self._save_cache(method, params, data)
         return data
@@ -226,7 +227,7 @@ class LastfmClient:
     def artist_get_info(
         self,
         artist: str,
-        mbid: Optional[str] = None,
+        mbid: str | None = None,
     ) -> LastfmArtist:
         """Get detailed info about an artist.
 
@@ -245,7 +246,7 @@ class LastfmClient:
     def artist_get_similar(
         self,
         artist: str,
-        mbid: Optional[str] = None,
+        mbid: str | None = None,
         limit: int = 30,
     ) -> list[str]:
         """Get similar artists by name.
@@ -257,7 +258,11 @@ class LastfmClient:
         Returns:
             list of similar artist names
         """
-        params = {"artist": artist, "limit": min(limit, 100)} if not mbid else {"mbid": mbid, "limit": min(limit, 100)}
+        params = (
+            {"artist": artist, "limit": min(limit, 100)}
+            if not mbid
+            else {"mbid": mbid, "limit": min(limit, 100)}
+        )
         data = self._call("artist.getSimilar", **params)
         similar = data.get("similarartists", {}).get("artist", [])
         return [a.get("name", "") for a in similar if a.get("name")]
@@ -266,7 +271,11 @@ class LastfmClient:
         """Parse a Last.fm artist dict into LastfmArtist."""
         tags_raw = raw.get("tags", {}).get("tag", [])
         # Lowercase so Last.fm tags compare equal across sources; "seen live" says nothing about genre.
-        tags = [t["name"].lower() for t in tags_raw if t.get("name") and t["name"].lower() != "seen live"]
+        tags = [
+            t["name"].lower()
+            for t in tags_raw
+            if t.get("name") and t["name"].lower() != "seen live"
+        ]
 
         bio = raw.get("bio", {})
         bio_summary = bio.get("summary", "") if isinstance(bio, dict) else ""
@@ -280,14 +289,10 @@ class LastfmClient:
         listeners = 0
         playcount = 0
         if isinstance(stats, dict):
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 listeners = int(stats.get("listeners", "0"))
-            except (ValueError, TypeError):
-                pass
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 playcount = int(stats.get("playcount", "0"))
-            except (ValueError, TypeError):
-                pass
 
         return LastfmArtist(
             name=raw.get("name", ""),
@@ -306,7 +311,7 @@ def get_top_artists_for_tag(
     tag: str,
     period: str = "6month",
     limit: int = 30,
-    api_key: Optional[str] = None,  # secretscan:ignore
+    api_key: str | None = None,  # secretscan:ignore
 ) -> list[LastfmArtist]:
     """One-shot helper: top artists for a tag.
 

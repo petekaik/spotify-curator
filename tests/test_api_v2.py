@@ -3,8 +3,11 @@
 These tests do NOT make real API calls. They mock spotipy._get/_post/_put/_delete
 to verify our wrapper builds the correct request paths and bodies.
 """
-import pytest
+
 from unittest.mock import MagicMock
+
+import pytest
+
 from src.spotify.api_v2 import SpotifyAPIv2
 
 
@@ -28,6 +31,7 @@ def api(mock_sp):
 # ────────────────────────────────────────────────────────────
 # Library endpoints
 # ────────────────────────────────────────────────────────────
+
 
 class TestLibrary:
     def test_library_contains_single(self, api, mock_sp):
@@ -71,6 +75,7 @@ class TestLibrary:
 # Playlist endpoints (new paths)
 # ────────────────────────────────────────────────────────────
 
+
 class TestPlaylists:
     def test_playlist_items_uses_new_path(self, api, mock_sp):
         mock_sp._get.return_value = {"items": [], "total": 0}
@@ -105,49 +110,56 @@ class TestPlaylists:
 # Artist workaround
 # ────────────────────────────────────────────────────────────
 
+
 class TestArtistWorkaround:
     def test_artist_top_tracks_via_albums(self, api, mock_sp):
         # Mock albums response
         mock_sp._get.side_effect = [
             # First call: artist's albums
-            {"items": [
-                {
-                    "id": "album1",
-                    "name": "Greatest Hits",
-                    "popularity": 80,
-                    "release_date": "2023-01-01",
-                },
-                {
-                    "id": "album2",
-                    "name": "Debut Album",
-                    "popularity": 60,
-                    "release_date": "2020-05-15",
-                },
-            ]},
+            {
+                "items": [
+                    {
+                        "id": "album1",
+                        "name": "Greatest Hits",
+                        "popularity": 80,
+                        "release_date": "2023-01-01",
+                    },
+                    {
+                        "id": "album2",
+                        "name": "Debut Album",
+                        "popularity": 60,
+                        "release_date": "2020-05-15",
+                    },
+                ]
+            },
             # Second call: album1's tracks
-            {"items": [
-                {
-                    "id": "track1",
-                    "name": "Hit Song",
-                    "uri": "spotify:track:track1",
-                    "popularity": 75,
-                    "duration_ms": 200000,
-                    "explicit": False,
-                    "preview_url": None,
-                },
-            ]},
+            {
+                "items": [
+                    {
+                        "id": "track1",
+                        "name": "Hit Song",
+                        "uri": "spotify:track:track1",
+                        "popularity": 75,
+                        "duration_ms": 200000,
+                        "explicit": False,
+                        "preview_url": None,
+                    },
+                ]
+            },
             # Third call: album2's tracks
-            {"items": [
-                {
-                    "id": "track2",
-                    "name": "Early Track",
-                    "uri": "spotify:track:track2",
-                    "popularity": 50,
-                    "duration_ms": 180000,
-                    "explicit": True,
-                    "preview_url": None,
-                },
-            ]},
+            {
+                "items": [
+                    {
+                        "id": "track2",
+                        "name": "Early Track",
+                        "uri": "spotify:track:track2",
+                        "popularity": 50,
+                        "duration_ms": 180000,
+                        "explicit": True,
+                        "preview_url": None,
+                    },
+                ]
+            },
         ]
 
         tracks = api.artist_top_tracks_via_albums("artist123", max_albums=2)
@@ -168,18 +180,38 @@ class TestArtistWorkaround:
     def test_artist_top_tracks_deduplicates(self, api, mock_sp):
         # Same track appears in two albums - should be deduped
         mock_sp._get.side_effect = [
-            {"items": [
-                {"id": "a1", "name": "A1", "popularity": 70, "release_date": "2020-01-01"},
-                {"id": "a2", "name": "A2", "popularity": 60, "release_date": "2021-01-01"},
-            ]},
-            {"items": [
-                {"id": "same", "name": "Same Song", "uri": "spotify:track:same",
-                 "popularity": 80, "duration_ms": 200000, "explicit": False, "preview_url": None},
-            ]},
-            {"items": [
-                {"id": "same", "name": "Same Song", "uri": "spotify:track:same",
-                 "popularity": 80, "duration_ms": 200000, "explicit": False, "preview_url": None},
-            ]},
+            {
+                "items": [
+                    {"id": "a1", "name": "A1", "popularity": 70, "release_date": "2020-01-01"},
+                    {"id": "a2", "name": "A2", "popularity": 60, "release_date": "2021-01-01"},
+                ]
+            },
+            {
+                "items": [
+                    {
+                        "id": "same",
+                        "name": "Same Song",
+                        "uri": "spotify:track:same",
+                        "popularity": 80,
+                        "duration_ms": 200000,
+                        "explicit": False,
+                        "preview_url": None,
+                    },
+                ]
+            },
+            {
+                "items": [
+                    {
+                        "id": "same",
+                        "name": "Same Song",
+                        "uri": "spotify:track:same",
+                        "popularity": 80,
+                        "duration_ms": 200000,
+                        "explicit": False,
+                        "preview_url": None,
+                    },
+                ]
+            },
         ]
         tracks = api.artist_top_tracks_via_albums("artist1", max_albums=2)
         # Should be deduplicated to 1 track
@@ -209,6 +241,7 @@ class TestSearch:
 # Critical regression: verify we're using NEW endpoints
 # ────────────────────────────────────────────────────────────
 
+
 class TestEndpointCorrectness:
     """These tests exist to catch regressions if someone uses old paths."""
 
@@ -218,16 +251,19 @@ class TestEndpointCorrectness:
         mock_sp._get.return_value = {"items": []}
         api.playlist_items("xyz")
         call_path = mock_sp._get.call_args[0][0]
-        assert "/tracks" not in call_path, \
+        assert "/tracks" not in call_path, (
             f"BUG: Using removed endpoint {call_path}, should be /items"
+        )
 
     def test_never_use_old_top_tracks_path(self, api, mock_sp):
         """artist_top_tracks was REMOVED in Feb 2026."""
+
         # Simulate API call to old endpoint returning 404
         def mock_get(path, **kwargs):
             if path == "artists/x/top-tracks":
                 raise Exception("404 - endpoint removed")
             return {"items": []}
+
         mock_sp._get.side_effect = mock_get
 
         # Our workaround should NOT call /top-tracks
@@ -237,5 +273,4 @@ class TestEndpointCorrectness:
 
         # Verify no call was made to /top-tracks
         for call in mock_sp._get.call_args_list:
-            assert "top-tracks" not in call[0][0], \
-                f"BUG: Called removed endpoint {call[0][0]}"
+            assert "top-tracks" not in call[0][0], f"BUG: Called removed endpoint {call[0][0]}"

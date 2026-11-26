@@ -10,19 +10,19 @@ The key endpoint: `similar-artists` takes a list of MusicBrainz IDs
 
 API docs: https://listenbrainz.readthedocs.io/en/latest/users/api/index.html  # secretscan:ignore
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-
-from src.config import DATA_DIR
-from typing import Optional
 from urllib.parse import urlencode
 
 import requests
+
+from src.config import DATA_DIR
 
 log = logging.getLogger(__name__)
 
@@ -33,9 +33,10 @@ DEFAULT_CACHE_DIR = DATA_DIR / "listenbrainz_cache"
 @dataclass
 class SimilarArtist:
     """An artist similar to one of the seed artists."""
+
     name: str
-    mbid: str                           # MusicBrainz ID
-    similarity_score: float             # 0.0-1.0, higher = more similar
+    mbid: str  # MusicBrainz ID
+    similarity_score: float  # 0.0-1.0, higher = more similar
 
 
 class ListenBrainzClient:
@@ -54,7 +55,7 @@ class ListenBrainzClient:
         self,
         cache_dir: Path = DEFAULT_CACHE_DIR,
         cache_ttl_seconds: int = 7 * 24 * 3600,
-        min_request_interval: float = 1.0,    # 1 req/s (be polite)
+        min_request_interval: float = 1.0,  # 1 req/s (be polite)
     ):
         self._cache_dir = cache_dir
         self._cache_ttl = cache_ttl_seconds
@@ -72,10 +73,11 @@ class ListenBrainzClient:
 
     def _cache_path(self, key_data: str) -> Path:
         import hashlib
+
         h = hashlib.sha256(key_data.encode()).hexdigest()[:16]
         return self._cache_dir / f"{h}.json"
 
-    def _get_cached(self, key: str) -> Optional[dict]:
+    def _get_cached(self, key: str) -> dict | None:
         path = self._cache_path(key)
         if not path.exists():
             return None
@@ -94,7 +96,7 @@ class ListenBrainzClient:
         except OSError as e:
             log.debug(f"Cache write failed: {e}")
 
-    def _get(self, endpoint: str, params: Optional[dict] = None) -> dict:
+    def _get(self, endpoint: str, params: dict | None = None) -> dict:
         """GET request with caching and throttling."""
         params = params or {}
         cache_key = f"GET {endpoint} {json.dumps(params, sort_keys=True)}"
@@ -201,11 +203,13 @@ class ListenBrainzClient:
                 score = float(item.get("score", 0.0))
                 if not mbid or not name:
                     continue
-                similar.append(SimilarArtist(
-                    name=name,
-                    mbid=mbid,
-                    similarity_score=score,
-                ))
+                similar.append(
+                    SimilarArtist(
+                        name=name,
+                        mbid=mbid,
+                        similarity_score=score,
+                    )
+                )
             except (ValueError, TypeError, AttributeError):
                 continue
 
@@ -234,20 +238,22 @@ class ListenBrainzClient:
         releases = []
         payload = data.get("payload", {})
         for r in payload.get("releases", []):
-            releases.append({
-                "release_name": r.get("release_name", ""),
-                "artist_name": r.get("artist_name", ""),
-                "artist_mbid": r.get("artist_mbid", ""),
-                "release_date": r.get("release_date", ""),
-                "release_mbid": r.get("release_mbid", ""),
-            })
+            releases.append(
+                {
+                    "release_name": r.get("release_name", ""),
+                    "artist_name": r.get("artist_name", ""),
+                    "artist_mbid": r.get("artist_mbid", ""),
+                    "release_date": r.get("release_date", ""),
+                    "release_mbid": r.get("release_mbid", ""),
+                }
+            )
         return releases
 
 
 # Convenience function
 def find_similar_to_artists(
     mbids: list[str],
-    api_key_unused: Optional[str] = None,  # no key needed  # secretscan:ignore
+    api_key_unused: str | None = None,  # no key needed  # secretscan:ignore
 ) -> list[SimilarArtist]:
     """One-shot helper: find artists similar to given MBIDs.
 

@@ -7,14 +7,15 @@ This module is intentionally thin — all the heavy lifting lives in
 the underlying modules. The workflow just orchestrates calls and
 collects results.
 """
+
 from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
 
 from src.config import DATA_DIR
 
@@ -24,10 +25,11 @@ log = logging.getLogger(__name__)
 @dataclass
 class WeeklyReport:
     """Summary of one weekly digest run."""
-    run_id: str                            # ISO timestamp + microseconds
+
+    run_id: str  # ISO timestamp + microseconds
     started_at: datetime
-    finished_at: Optional[datetime] = None
-    duration_seconds: Optional[float] = None
+    finished_at: datetime | None = None
+    duration_seconds: float | None = None
 
     # Pipeline stats
     profile_refreshed: bool = False
@@ -68,10 +70,12 @@ class WeeklyReport:
         lines.append("")
 
         if self.playlists:
-            lines.extend([
-                "## Playlists",
-                "",
-            ])
+            lines.extend(
+                [
+                    "## Playlists",
+                    "",
+                ]
+            )
             for pl in self.playlists:
                 lines.append(
                     f"- **{pl['mood']}**: "
@@ -80,19 +84,23 @@ class WeeklyReport:
             lines.append("")
 
         if self.errors:
-            lines.extend([
-                "## Errors",
-                "",
-            ])
+            lines.extend(
+                [
+                    "## Errors",
+                    "",
+                ]
+            )
             for e in self.errors:
                 lines.append(f"- {e}")
             lines.append("")
 
         if self.warnings:
-            lines.extend([
-                "## Warnings",
-                "",
-            ])
+            lines.extend(
+                [
+                    "## Warnings",
+                    "",
+                ]
+            )
             for w in self.warnings:
                 lines.append(f"- {w}")
             lines.append("")
@@ -109,7 +117,7 @@ class WeeklyReport:
 
 def run_weekly_digest(
     profile_user_id: str = "default",
-    report_dir: Optional[Path] = None,
+    report_dir: Path | None = None,
     dry_run: bool = False,
 ) -> dict:
     """Run the full weekly digest pipeline.
@@ -139,21 +147,15 @@ def run_weekly_digest(
     try:
         # 1. Refresh profile
         try:
-            from src.analyzer.profile import build_user_profile
             # In a real run, this fetches from Spotify API
             # For now, just mark as refreshed
             report.profile_refreshed = True
-            report.warnings.append(
-                "Profile refresh not yet implemented; using cached profile"
-            )
+            report.warnings.append("Profile refresh not yet implemented; using cached profile")
         except Exception as e:
             report.errors.append(f"Profile refresh failed: {e}")
 
         # 2. Discover candidates
         try:
-            from src.discovery.sources.lastfm import get_top_artists_for_tag
-            from src.discovery.sources.musicbrainz import MusicBrainzClient
-            from src.discovery.sources.reddit import RedditClient
             # Stub: each source returns 10-20 candidates
             candidates = []
             report.sources.append("lastfm")
@@ -167,6 +169,7 @@ def run_weekly_digest(
         # 3. Rank
         try:
             from src.discovery.ranking import rank_artists
+
             if candidates:
                 ranked = rank_artists(candidates, profile=None)
                 report.candidates_ranked = len(ranked)
@@ -214,9 +217,9 @@ RESPONSE_DIR = DATA_DIR / "daemon.responses"
 
 def send_command(
     command: str,
-    args: Optional[dict] = None,
+    args: dict | None = None,
     timeout_seconds: float = 30.0,
-) -> Optional[dict]:
+) -> dict | None:
     """Send a command to the running daemon and wait for response.
 
     Commands:
@@ -273,6 +276,7 @@ def process_commands(callback: Callable[[dict], dict]) -> None:
         callback: function that takes a command dict and returns response dict
     """
     import json
+
     log.info(f"Daemon watching for commands at {COMMAND_FILE}")
     while True:
         if COMMAND_FILE.exists():
@@ -290,7 +294,3 @@ def process_commands(callback: Callable[[dict], dict]) -> None:
             RESPONSE_DIR.mkdir(parents=True, exist_ok=True)
             (RESPONSE_DIR / f"{request_id}.json").write_text(json.dumps(response))
         time.sleep(1.0)
-
-
-# Callable type for type hints
-from typing import Callable

@@ -10,10 +10,10 @@ Usage:
     >>> user = sp.current_user()
     >>> print(user['display_name'])
 """
+
 import os
 import sys
 from pathlib import Path
-from typing import Optional
 
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
@@ -51,7 +51,12 @@ def _load_credentials() -> tuple[str, str, str]:
     client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")  # secretscan:ignore (env lookup, no value)
     redirect_uri = os.getenv("SPOTIPY_REDIRECT_URI", "http://127.0.0.1:43827/spotify/callback")
 
-    if not client_id or not client_secret or client_id.lower().startswith("your_") or client_secret.lower().startswith("your_"):
+    if (
+        not client_id
+        or not client_secret
+        or client_id.lower().startswith("your_")
+        or client_secret.lower().startswith("your_")
+    ):
         print(
             "❌ Spotify API credentials are still placeholders.\n"
             "   1. Create or open your Spotify app: https://developer.spotify.com/dashboard\n"
@@ -110,7 +115,7 @@ def is_authenticated() -> bool:
         return False
 
 
-def get_current_user_id() -> Optional[str]:
+def get_current_user_id() -> str | None:
     """Get the authenticated user's Spotify ID.
 
     Returns:

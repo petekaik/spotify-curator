@@ -9,14 +9,15 @@ the `TOOL_REGISTRY` dict. When the skill is loaded, the loader imports
 this package and calls `register_tools()` to add each tool to Hermes's
 toolset.
 """
+
 from .tools import (
-    spotify_curator_status,
-    spotify_curator_refresh_profile,
+    TOOL_REGISTRY,
     spotify_curator_discover,
     spotify_curator_generate_mood,
     spotify_curator_generate_weekly,
     spotify_curator_get_reports,
-    TOOL_REGISTRY,
+    spotify_curator_refresh_profile,
+    spotify_curator_status,
 )
 
 

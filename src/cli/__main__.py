@@ -7,6 +7,7 @@ Allows the package to be installed and run as:
 Or directly:
     python -m src.cli.main
 """
+
 from src.cli.main import main
 
 if __name__ == "__main__":

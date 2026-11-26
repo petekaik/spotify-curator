@@ -22,21 +22,19 @@ Score formula:
 
 All weights are configurable via TuningConfig.
 """
+
 from __future__ import annotations
 
 import math
-from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Optional
 
-from src.analyzer.types import UserProfile, TrackFeatures
+from src.analyzer.types import TrackFeatures, UserProfile
 from src.discovery.sources.lastfm import LastfmArtist
-
 
 # ────────────────────────────────────────────────────────────
 # Configuration
 # ────────────────────────────────────────────────────────────
+
 
 @dataclass
 class TuningConfig:
@@ -50,6 +48,7 @@ class TuningConfig:
     but the relative magnitudes matter. mainstream_penalty is negative
     (subtracted from score).
     """
+
     genre_match: float = 0.40
     emerging_signal: float = 0.25
     feature_match: float = 0.20
@@ -74,18 +73,26 @@ class TuningConfig:
 
     def validate(self) -> None:
         """Sanity check: ensure weights are in plausible range."""
-        for name in ("genre_match", "emerging_signal", "feature_match",
-                     "discovery_bonus", "geo_bonus"):
+        for name in (
+            "genre_match",
+            "emerging_signal",
+            "feature_match",
+            "discovery_bonus",
+            "geo_bonus",
+        ):
             v = getattr(self, name)
             if not (0.0 <= v <= 1.0):
                 raise ValueError(f"{name} must be in [0, 1], got {v}")
         if not (-1.0 <= self.mainstream_penalty <= 0.0):
-            raise ValueError(f"mainstream_penalty must be in [-1, 0], got {self.mainstream_penalty}")
+            raise ValueError(
+                f"mainstream_penalty must be in [-1, 0], got {self.mainstream_penalty}"
+            )
 
 
 # ────────────────────────────────────────────────────────────
 # Candidate type (unifies Last.fm, ListenBrainz, future sources)
 # ────────────────────────────────────────────────────────────
+
 
 @dataclass
 class Candidate:
@@ -94,9 +101,10 @@ class Candidate:
     Used to feed into the ranking algorithm. The fields are optional
     because not all sources provide all data.
     """
+
     name: str
-    mbid: Optional[str] = None
-    spotify_id: Optional[str] = None  # if resolved via MusicBrainz→Spotify
+    mbid: str | None = None
+    spotify_id: str | None = None  # if resolved via MusicBrainz→Spotify
 
     # Genre data (from MusicBrainz or Spotify artist.genres)
     genres: list[str] = field(default_factory=list)
@@ -111,19 +119,19 @@ class Candidate:
     listenbrainz_similarity: float = 0.0
 
     # Audio features (Spotify audio-features endpoint, deprecated)
-    track_features: Optional[TrackFeatures] = None
+    track_features: TrackFeatures | None = None
 
     # Discovery metrics
     album_count: int = 0
-    first_release_year: Optional[int] = None
-    last_release_year: Optional[int] = None
+    first_release_year: int | None = None
+    last_release_year: int | None = None
 
     # Source provenance
     source: str = ""  # "lastfm:tag" | "lastfm:similar" | "listenbrainz" | etc.
     tags_from_user: list[str] = field(default_factory=list)  # for geo_bonus
 
     @classmethod
-    def from_lastfm(cls, lfm: LastfmArtist, source: str = "lastfm:tag") -> "Candidate":
+    def from_lastfm(cls, lfm: LastfmArtist, source: str = "lastfm:tag") -> Candidate:
         """Build a Candidate from a LastfmArtist."""
         return cls(
             name=lfm.name,
@@ -139,6 +147,7 @@ class Candidate:
 # ────────────────────────────────────────────────────────────
 # Scoring components
 # ────────────────────────────────────────────────────────────
+
 
 def genre_match_score(
     candidate_genres: list[str],
@@ -197,8 +206,8 @@ def emerging_signal_score(candidate: Candidate) -> float:
 
 
 def feature_match_score(
-    candidate_features: Optional[TrackFeatures],
-    profile_centroid: Optional[TrackFeatures],
+    candidate_features: TrackFeatures | None,
+    profile_centroid: TrackFeatures | None,
 ) -> float:
     """Compute audio features match between candidate and user centroid.
 
@@ -216,8 +225,15 @@ def feature_match_score(
 
     # Compute Euclidean distance on normalized features
     # All features are 0-1 except tempo (0-250 BPM)
-    keys = ("energy", "valence", "danceability", "acousticness",
-            "instrumentalness", "speechiness", "liveness")
+    keys = (
+        "energy",
+        "valence",
+        "danceability",
+        "acousticness",
+        "instrumentalness",
+        "speechiness",
+        "liveness",
+    )
     c_vec = [getattr(candidate_features, k, 0) for k in keys]
     p_vec = [getattr(profile_centroid, k, 0) for k in keys]
     # Normalize tempo
@@ -229,7 +245,7 @@ def feature_match_score(
     p_full = p_vec + [p_tempo]
 
     # Euclidean distance, max possible is sqrt(8) ≈ 2.83
-    dist = math.sqrt(sum((a - b) ** 2 for a, b in zip(c_full, p_full)))
+    dist = math.sqrt(sum((a - b) ** 2 for a, b in zip(c_full, p_full, strict=False)))
     max_dist = math.sqrt(len(c_full))
     # Convert distance to similarity (1 = identical, 0 = max distance)
     similarity = max(0.0, 1.0 - (dist / max_dist))
@@ -306,11 +322,12 @@ def geo_bonus_score(candidate: Candidate, preferred_tags: list[str]) -> float:
 # Main ranking function
 # ────────────────────────────────────────────────────────────
 
+
 def score_artist(
     candidate: Candidate,
     profile: UserProfile,
-    config: Optional[TuningConfig] = None,
-    preferred_geo_tags: Optional[list[str]] = None,
+    config: TuningConfig | None = None,
+    preferred_geo_tags: list[str] | None = None,
 ) -> tuple[float, dict[str, float]]:
     """Score a single artist candidate against the user profile.
 
@@ -340,9 +357,7 @@ def score_artist(
     components["discovery_bonus"] = config.discovery_bonus * discovery_bonus_score(
         candidate, config
     )
-    components["geo_bonus"] = config.geo_bonus * geo_bonus_score(
-        candidate, preferred_geo_tags
-    )
+    components["geo_bonus"] = config.geo_bonus * geo_bonus_score(candidate, preferred_geo_tags)
     # Penalty is negative
     penalty = mainstream_penalty(candidate, config)
     components["mainstream_penalty"] = config.mainstream_penalty * penalty
@@ -354,9 +369,9 @@ def score_artist(
 def rank_artists(
     candidates: list[Candidate],
     profile: UserProfile,
-    config: Optional[TuningConfig] = None,
-    preferred_geo_tags: Optional[list[str]] = None,
-    limit: Optional[int] = None,
+    config: TuningConfig | None = None,
+    preferred_geo_tags: list[str] | None = None,
+    limit: int | None = None,
 ) -> list[tuple[Candidate, float, dict[str, float]]]:
     """Rank a list of candidates by score.
 
@@ -385,14 +400,16 @@ def rank_artists(
 
 def deduplicate_candidates(
     candidates: list[Candidate],
-    key_fn: Optional[callable] = None,
+    key_fn: callable | None = None,
 ) -> list[Candidate]:
     """Deduplicate candidates by some key (default: lowercased name).
 
     Keeps the candidate with the highest data quality (most fields filled).
     """
     if key_fn is None:
-        key_fn = lambda c: c.name.lower().strip()
+
+        def key_fn(c):
+            return c.name.lower().strip()
 
     seen: dict[str, Candidate] = {}
     for c in candidates:

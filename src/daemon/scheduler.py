@@ -15,23 +15,24 @@ Usage:
     >>> sched.start()  # blocks; runs jobs in background thread
     >>> # or schedule.add_job(...) to add custom jobs
 """
+
 from __future__ import annotations
 
 import logging
-import os
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 log = logging.getLogger(__name__)
 
 # APScheduler is optional; provide a clear error if missing
 try:
-    from apscheduler.schedulers.blocking import BlockingScheduler
+    from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED
     from apscheduler.schedulers.background import BackgroundScheduler
+    from apscheduler.schedulers.blocking import BlockingScheduler
     from apscheduler.triggers.cron import CronTrigger
-    from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
+
     HAVE_APSCHEDULER = True
 except ImportError:
     HAVE_APSCHEDULER = False
@@ -39,8 +40,8 @@ except ImportError:
 
 
 DEFAULT_CRON = {
-    "day_of_week": "sun",   # Sunday
-    "hour": 20,             # 8 PM
+    "day_of_week": "sun",  # Sunday
+    "hour": 20,  # 8 PM
     "minute": 0,
 }
 
@@ -48,19 +49,21 @@ DEFAULT_CRON = {
 @dataclass
 class JobResult:
     """Result of a single scheduled job execution."""
+
     job_id: str
     started_at: datetime
-    finished_at: Optional[datetime] = None
+    finished_at: datetime | None = None
     success: bool = False
-    error: Optional[str] = None
+    error: str | None = None
     output: Any = None  # job-specific output (e.g. generated playlist ID)
 
 
 @dataclass
 class SchedulerConfig:
     """Configuration for the daemon scheduler."""
+
     timezone: str = "Europe/Helsinki"  # Pomo's TZ (EET)
-    jobstore_url: Optional[str] = None  # e.g. "sqlite:///jobs.db" for persistence
+    jobstore_url: str | None = None  # e.g. "sqlite:///jobs.db" for persistence
     weekly_cron: dict = field(default_factory=lambda: dict(DEFAULT_CRON))
     daemon: bool = False  # True = background thread, False = blocking
     max_instances: int = 1  # one job at a time
@@ -76,26 +79,22 @@ class CuratorScheduler:
     - Errors are caught and logged; jobs don't crash the scheduler
     """
 
-    def __init__(self, config: Optional[SchedulerConfig] = None):
+    def __init__(self, config: SchedulerConfig | None = None):
         if not HAVE_APSCHEDULER:
-            raise RuntimeError(
-                "APScheduler not installed. Run: pip install apscheduler>=3.10.0"
-            )
+            raise RuntimeError("APScheduler not installed. Run: pip install apscheduler>=3.10.0")
         self.config = config or SchedulerConfig()
         self._results: dict[str, JobResult] = {}
         self._scheduler = self._build_scheduler()
 
     def _build_scheduler(self):
         """Build APScheduler with our config."""
-        scheduler_cls = (
-            BackgroundScheduler if self.config.daemon
-            else BlockingScheduler
-        )
+        scheduler_cls = BackgroundScheduler if self.config.daemon else BlockingScheduler
         kwargs: dict[str, Any] = {
             "timezone": self.config.timezone,
         }
         if self.config.jobstore_url:
             from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+
             kwargs["jobstores"] = {"default": SQLAlchemyJobStore(url=self.config.jobstore_url)}
         sched = scheduler_cls(**kwargs)
         sched.add_listener(
@@ -188,12 +187,18 @@ class CuratorScheduler:
         Useful for: profile refresh every 6h, cache cleanup daily, etc.
         """
         from apscheduler.triggers.interval import IntervalTrigger
+
         trigger = IntervalTrigger(
-            hours=hours, minutes=minutes, seconds=seconds,
+            hours=hours,
+            minutes=minutes,
+            seconds=seconds,
             timezone=self.config.timezone,
         )
         self._scheduler.add_job(
-            func, trigger=trigger, id=job_id, replace_existing=replace,
+            func,
+            trigger=trigger,
+            id=job_id,
+            replace_existing=replace,
         )
         log.info(f"Scheduled '{job_id}' every {hours}h{minutes}m{seconds}s")
 
@@ -206,15 +211,17 @@ class CuratorScheduler:
             except (AttributeError, TypeError):
                 # next_run_time only available when scheduler is running
                 next_run = None
-            jobs.append({
-                "id": job.id,
-                "name": job.name,
-                "next_run": next_run,
-                "trigger": str(job.trigger),
-            })
+            jobs.append(
+                {
+                    "id": job.id,
+                    "name": job.name,
+                    "next_run": next_run,
+                    "trigger": str(job.trigger),
+                }
+            )
         return jobs
 
-    def get_result(self, job_id: str) -> Optional[JobResult]:
+    def get_result(self, job_id: str) -> JobResult | None:
         """Get the most recent result for a job."""
         return self._results.get(job_id)
 
@@ -239,7 +246,8 @@ class CuratorScheduler:
 
     def shutdown(self, wait: bool = True) -> None:
         """Shut down the scheduler."""
-        from apscheduler.schedulers.base import STATE_RUNNING, STATE_STOPPED
+        from apscheduler.schedulers.base import STATE_RUNNING
+
         log.info("Shutting down scheduler")
         # Only shutdown if running; otherwise it's a no-op
         if self._scheduler.state == STATE_RUNNING:
@@ -249,6 +257,7 @@ class CuratorScheduler:
 # ────────────────────────────────────────────────────────────
 # Default weekly digest workflow
 # ────────────────────────────────────────────────────────────
+
 
 def default_weekly_digest() -> dict:
     """Default weekly digest workflow.
@@ -264,4 +273,5 @@ def default_weekly_digest() -> dict:
         dict with keys: profile_refreshed, candidates_count, playlists_generated, report_path
     """
     from src.daemon.workflow import run_weekly_digest
+
     return run_weekly_digest()

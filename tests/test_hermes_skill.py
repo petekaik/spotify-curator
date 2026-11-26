@@ -7,25 +7,25 @@ the tool layer correctly:
 - Handles errors gracefully (no exceptions, just {"error": ...})
 - Validates inputs (e.g. mood whitelist)
 """
+
 import json
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from src.hermes_skill.tools import (
-    spotify_curator_status,
-    spotify_curator_refresh_profile,
+    TOOL_REGISTRY,
+    VALID_MOODS,
     spotify_curator_discover,
     spotify_curator_generate_mood,
     spotify_curator_generate_weekly,
     spotify_curator_get_reports,
-    TOOL_REGISTRY,
-    VALID_MOODS,
+    spotify_curator_refresh_profile,
+    spotify_curator_status,
 )
-
 
 # ────────────────────────────────────────────────────────────
 # Tool 1: status
 # ────────────────────────────────────────────────────────────
+
 
 class TestStatus:
     def test_status_all_healthy(self):
@@ -65,8 +65,7 @@ class TestStatus:
         assert result["tools_healthy"] is False
 
     def test_status_returns_error_on_exception(self):
-        with patch("src.hermes_skill.tools._import_spotify_curator",
-                   side_effect=Exception("boom")):
+        with patch("src.hermes_skill.tools._import_spotify_curator", side_effect=Exception("boom")):
             result = spotify_curator_status()
         assert "error" in result
         assert result["error"] == "status_check_failed"
@@ -76,10 +75,13 @@ class TestStatus:
 # Tool 2: refresh_profile
 # ────────────────────────────────────────────────────────────
 
+
 class TestRefreshProfile:
     def test_refresh_profile_success(self):
         from datetime import datetime
+
         from src.analyzer.types import UserProfile
+
         mock_profile = UserProfile(
             user_id="u1",
             updated_at=datetime.now(),
@@ -94,9 +96,9 @@ class TestRefreshProfile:
                 "is_authenticated": lambda: True,
                 "get_spotify_client": MagicMock(),
                 "SpotifyAPIv2": MagicMock(),
-                "ProfileBuilder": MagicMock(return_value=MagicMock(
-                    build_and_save=MagicMock(return_value=mock_profile)
-                )),
+                "ProfileBuilder": MagicMock(
+                    return_value=MagicMock(build_and_save=MagicMock(return_value=mock_profile))
+                ),
             }
             mock_import.return_value = mods
             result = spotify_curator_refresh_profile()
@@ -116,24 +118,32 @@ class TestRefreshProfile:
     def test_refresh_profile_audio_features_false(self):
         """include_audio_features=False should be passed through."""
         from datetime import datetime
+
         from src.analyzer.types import UserProfile
+
         mock_profile = UserProfile(
-            user_id="u1", updated_at=datetime.now(),
-            genre_weights={}, artist_weights={},
-            total_artists=10, total_genres=2, total_tracks=20,
+            user_id="u1",
+            updated_at=datetime.now(),
+            genre_weights={},
+            artist_weights={},
+            total_artists=10,
+            total_genres=2,
+            total_tracks=20,
         )
         captured = {}
+
         def mock_build_and_save(include_features):
             captured["include_features"] = include_features
             return mock_profile
+
         with patch("src.hermes_skill.tools._import_spotify_curator") as mock_import:
             mods = {
                 "is_authenticated": lambda: True,
                 "get_spotify_client": MagicMock(),
                 "SpotifyAPIv2": MagicMock(),
-                "ProfileBuilder": MagicMock(return_value=MagicMock(
-                    build_and_save=mock_build_and_save
-                )),
+                "ProfileBuilder": MagicMock(
+                    return_value=MagicMock(build_and_save=mock_build_and_save)
+                ),
             }
             mock_import.return_value = mods
             spotify_curator_refresh_profile(include_audio_features=False)
@@ -144,14 +154,18 @@ class TestRefreshProfile:
 # Tool 3: discover
 # ────────────────────────────────────────────────────────────
 
+
 class TestDiscover:
     def test_discover_success(self):
         from datetime import datetime
+
         from src.analyzer.types import UserProfile
-        from src.discovery.sources.lastfm import LastfmArtist
         from src.discovery.ranking import Candidate
+        from src.discovery.sources.lastfm import LastfmArtist
+
         profile = UserProfile(
-            user_id="u1", updated_at=datetime.now(),
+            user_id="u1",
+            updated_at=datetime.now(),
             genre_weights={"indie": 1.0},
         )
         with patch("src.hermes_skill.tools._import_spotify_curator") as mock_import:
@@ -159,12 +173,18 @@ class TestDiscover:
                 "profile_exists": lambda p: True,
                 "load_profile": lambda p: profile,
                 "PROFILE_PATH": "/tmp",
-                "LastfmClient": MagicMock(return_value=MagicMock(
-                    _api_key="fake",
-                    tag_get_top_artists=MagicMock(return_value=[
-                        LastfmArtist(name="Artist 1", listeners=1000, mbid="m1", tags=["indie"]),
-                    ]),
-                )),
+                "LastfmClient": MagicMock(
+                    return_value=MagicMock(
+                        _api_key="fake",
+                        tag_get_top_artists=MagicMock(
+                            return_value=[
+                                LastfmArtist(
+                                    name="Artist 1", listeners=1000, mbid="m1", tags=["indie"]
+                                ),
+                            ]
+                        ),
+                    )
+                ),
                 "Candidate": Candidate,  # use the real class
                 "deduplicate_candidates": lambda c: c,
                 "rank_artists": lambda cands, prof, limit: [
@@ -191,7 +211,9 @@ class TestDiscover:
 
     def test_discover_no_lastfm_key(self):
         from datetime import datetime
+
         from src.analyzer.types import UserProfile
+
         profile = UserProfile(user_id="u1", updated_at=datetime.now())
         with patch("src.hermes_skill.tools._import_spotify_curator") as mock_import:
             mods = {
@@ -209,6 +231,7 @@ class TestDiscover:
 # Tool 4: generate_mood
 # ────────────────────────────────────────────────────────────
 
+
 class TestGenerateMood:
     def test_invalid_mood(self):
         result = spotify_curator_generate_mood(mood="nervous")
@@ -224,10 +247,12 @@ class TestGenerateMood:
 
     def test_generate_mood_success(self):
         from datetime import datetime
+
         from src.analyzer.types import UserProfile
-        from src.playlist.builder import BuiltPlaylist
+
         profile = UserProfile(
-            user_id="u1", updated_at=datetime.now(),
+            user_id="u1",
+            updated_at=datetime.now(),
             genre_weights={"ambient": 1.0},
         )
         with patch("src.hermes_skill.tools._import_spotify_curator") as mock_import:
@@ -236,10 +261,12 @@ class TestGenerateMood:
                 "profile_exists": lambda p: True,
                 "load_profile": lambda p: profile,
                 "PROFILE_PATH": "/tmp",
-                "LastfmClient": MagicMock(return_value=MagicMock(
-                    _api_key="fake",
-                    tag_get_top_artists=MagicMock(return_value=[]),
-                )),
+                "LastfmClient": MagicMock(
+                    return_value=MagicMock(
+                        _api_key="fake",
+                        tag_get_top_artists=MagicMock(return_value=[]),
+                    )
+                ),
                 "get_spotify_client": MagicMock(),
                 "SpotifyAPIv2": MagicMock(),
                 "PlaylistBuilder": MagicMock(),
@@ -252,19 +279,23 @@ class TestGenerateMood:
 
     def test_generate_mood_full_flow(self):
         from datetime import datetime
+
         from src.analyzer.types import UserProfile
-        from src.discovery.sources.lastfm import LastfmArtist
         from src.discovery.ranking import Candidate
+        from src.discovery.sources.lastfm import LastfmArtist
         from src.playlist.builder import BuiltPlaylist
+
         profile = UserProfile(
-            user_id="u1", updated_at=datetime.now(),
+            user_id="u1",
+            updated_at=datetime.now(),
             genre_weights={"ambient": 1.0},
         )
-        c1 = Candidate(name="A1", lastfm_listeners=1000, lastfm_tags=["ambient"], mbid="m1")
-        c2 = Candidate(name="A2", lastfm_listeners=2000, lastfm_tags=["ambient"], mbid="m2")
-        c3 = Candidate(name="A3", lastfm_listeners=3000, lastfm_tags=["ambient"], mbid="m3")
+        Candidate(name="A1", lastfm_listeners=1000, lastfm_tags=["ambient"], mbid="m1")
+        Candidate(name="A2", lastfm_listeners=2000, lastfm_tags=["ambient"], mbid="m2")
+        Candidate(name="A3", lastfm_listeners=3000, lastfm_tags=["ambient"], mbid="m3")
         mock_playlist = BuiltPlaylist(
-            name="Test", description="",
+            name="Test",
+            description="",
             tracks=[],
             candidate_count=3,
             total_artist_count=3,
@@ -276,25 +307,35 @@ class TestGenerateMood:
                 "profile_exists": lambda p: True,
                 "load_profile": lambda p: profile,
                 "PROFILE_PATH": "/tmp",
-                "LastfmClient": MagicMock(return_value=MagicMock(
-                    _api_key="fake",
-                    tag_get_top_artists=MagicMock(return_value=[
-                        LastfmArtist(name="A1", listeners=1000, mbid="m1", tags=["ambient"]),
-                        LastfmArtist(name="A2", listeners=2000, mbid="m2", tags=["ambient"]),
-                        LastfmArtist(name="A3", listeners=3000, mbid="m3", tags=["ambient"]),
-                    ]),
-                )),
+                "LastfmClient": MagicMock(
+                    return_value=MagicMock(
+                        _api_key="fake",
+                        tag_get_top_artists=MagicMock(
+                            return_value=[
+                                LastfmArtist(
+                                    name="A1", listeners=1000, mbid="m1", tags=["ambient"]
+                                ),
+                                LastfmArtist(
+                                    name="A2", listeners=2000, mbid="m2", tags=["ambient"]
+                                ),
+                                LastfmArtist(
+                                    name="A3", listeners=3000, mbid="m3", tags=["ambient"]
+                                ),
+                            ]
+                        ),
+                    )
+                ),
                 "get_spotify_client": MagicMock(),
                 "SpotifyAPIv2": MagicMock(),
-                "PlaylistBuilder": MagicMock(return_value=MagicMock(
-                    build=MagicMock(return_value=mock_playlist),
-                    write_to_spotify=MagicMock(return_value=mock_playlist),
-                )),
+                "PlaylistBuilder": MagicMock(
+                    return_value=MagicMock(
+                        build=MagicMock(return_value=mock_playlist),
+                        write_to_spotify=MagicMock(return_value=mock_playlist),
+                    )
+                ),
                 "Candidate": Candidate,  # use real class
                 "deduplicate_candidates": lambda c: c,
-                "rank_artists": lambda cands, prof, limit: [
-                    (c, 0.9, {}) for c in cands[:limit]
-                ],
+                "rank_artists": lambda cands, prof, limit: [(c, 0.9, {}) for c in cands[:limit]],
             }
             mock_import.return_value = mods
             result = spotify_curator_generate_mood(mood="calming", n_artists=3)
@@ -310,6 +351,7 @@ class TestGenerateMood:
 # ────────────────────────────────────────────────────────────
 # Tool 5: generate_weekly
 # ────────────────────────────────────────────────────────────
+
 
 class TestGenerateWeekly:
     def test_generate_weekly_runs_all_moods(self):
@@ -335,13 +377,16 @@ class TestGenerateWeekly:
             def fake_gen(mood, **_):
                 if mood in ("cheerful", "stimulating", "energetic"):
                     return {
-                        "success": True, "mood": mood,
+                        "success": True,
+                        "mood": mood,
                         "playlist_url": f"https://open.spotify.com/playlist/{mood}",
                         "playlist_name": f"Weekly {mood}",
-                        "artists_count": 10, "tracks_count": 20,
+                        "artists_count": 10,
+                        "tracks_count": 20,
                         "artists": ["x"],
                     }
                 return {"error": f"{mood}_failed"}
+
             mock_mood.side_effect = fake_gen
             result = spotify_curator_generate_weekly()
         # 3 of 6 succeeded
@@ -352,6 +397,7 @@ class TestGenerateWeekly:
 # ────────────────────────────────────────────────────────────
 # Tool 6: get_reports
 # ────────────────────────────────────────────────────────────
+
 
 class TestGetReports:
     def test_no_reports_dir(self, tmp_path, monkeypatch):
@@ -367,12 +413,16 @@ class TestGetReports:
         for week in ["2026-W27", "2026-W28"]:
             run_dir = reports_dir / week
             run_dir.mkdir()
-            (run_dir / "playlists.json").write_text(json.dumps({
-                "generated_at": f"{week[:4]}-{week[5:7]}-01T00:00:00Z",
-                "playlists": [
-                    {"mood": "calming", "url": f"https://open.spotify.com/playlist/{week}"}
-                ],
-            }))
+            (run_dir / "playlists.json").write_text(
+                json.dumps(
+                    {
+                        "generated_at": f"{week[:4]}-{week[5:7]}-01T00:00:00Z",
+                        "playlists": [
+                            {"mood": "calming", "url": f"https://open.spotify.com/playlist/{week}"}
+                        ],
+                    }
+                )
+            )
         monkeypatch.setattr("src.config.DATA_DIR", tmp_path)
         result = spotify_curator_get_reports()
         assert len(result["runs"]) == 2
@@ -383,15 +433,23 @@ class TestGetReports:
         reports_dir = tmp_path / "reports"
         reports_dir.mkdir()
         (reports_dir / "2026-W28").mkdir()
-        (reports_dir / "2026-W28" / "playlists.json").write_text(json.dumps({
-            "generated_at": "2026-07-08T00:00:00Z",
-            "playlists": [{"mood": "calming", "url": "x"}],
-        }))
+        (reports_dir / "2026-W28" / "playlists.json").write_text(
+            json.dumps(
+                {
+                    "generated_at": "2026-07-08T00:00:00Z",
+                    "playlists": [{"mood": "calming", "url": "x"}],
+                }
+            )
+        )
         (reports_dir / "2026-W27").mkdir()
-        (reports_dir / "2026-W27" / "playlists.json").write_text(json.dumps({
-            "generated_at": "2026-07-01T00:00:00Z",
-            "playlists": [{"mood": "energetic", "url": "y"}],
-        }))
+        (reports_dir / "2026-W27" / "playlists.json").write_text(
+            json.dumps(
+                {
+                    "generated_at": "2026-07-01T00:00:00Z",
+                    "playlists": [{"mood": "energetic", "url": "y"}],
+                }
+            )
+        )
         monkeypatch.setattr("src.config.DATA_DIR", tmp_path)
         result = spotify_curator_get_reports(mood_filter="calming")
         assert len(result["runs"]) == 1
@@ -401,6 +459,7 @@ class TestGetReports:
 # ────────────────────────────────────────────────────────────
 # Tool registry
 # ────────────────────────────────────────────────────────────
+
 
 class TestToolRegistry:
     def test_all_tools_registered(self):
@@ -431,6 +490,7 @@ class TestToolRegistry:
 
     def test_register_tools_function(self):
         from src.hermes_skill import register_tools
+
         mock_registry = MagicMock()
         register_tools(mock_registry)
         # Should have registered all 6 tools
@@ -444,10 +504,12 @@ class TestToolRegistry:
 # Error handling
 # ────────────────────────────────────────────────────────────
 
+
 class TestErrorHandling:
     def test_discover_handles_internal_exception(self):
-        with patch("src.hermes_skill.tools._import_spotify_curator",
-                   side_effect=RuntimeError("kaboom")):
+        with patch(
+            "src.hermes_skill.tools._import_spotify_curator", side_effect=RuntimeError("kaboom")
+        ):
             result = spotify_curator_discover()
         assert "error" in result
         assert result["error"] == "discover_failed"
@@ -459,9 +521,11 @@ class TestErrorHandling:
                 "is_authenticated": lambda: True,
                 "get_spotify_client": MagicMock(),
                 "SpotifyAPIv2": MagicMock(),
-                "ProfileBuilder": MagicMock(return_value=MagicMock(
-                    build_and_save=MagicMock(side_effect=RuntimeError("401 Unauthorized"))
-                )),
+                "ProfileBuilder": MagicMock(
+                    return_value=MagicMock(
+                        build_and_save=MagicMock(side_effect=RuntimeError("401 Unauthorized"))
+                    )
+                ),
             }
             mock_import.return_value = mods
             result = spotify_curator_refresh_profile()

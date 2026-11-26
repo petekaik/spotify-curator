@@ -6,11 +6,11 @@ have to hit the Spotify API on every CLI run. The Parquet format is:
 - Schema-safe
 - Human-inspectable with pandas
 """
+
 from __future__ import annotations
 
 import json
 import logging
-import os
 from datetime import datetime
 from pathlib import Path
 
@@ -18,11 +18,11 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from src.analyzer.types import UserProfile, TimeRangeData, ArtistRef, TrackRef
+from src.analyzer.types import UserProfile
+from src.config import DATA_DIR as CACHE_DIR
 
 log = logging.getLogger(__name__)
 
-from src.config import DATA_DIR as CACHE_DIR
 PROFILE_PATH = CACHE_DIR / "profile.parquet"
 
 
@@ -53,7 +53,9 @@ def save_profile(profile: UserProfile, path: Path = PROFILE_PATH) -> None:
         "time_ranges": json.dumps(d["time_ranges"]),
         "saved_album_ids": json.dumps(d["saved_album_ids"]),
         "saved_track_ids": json.dumps(d["saved_track_ids"]),
-        "features_centroid": json.dumps(d["features_centroid"]) if d.get("features_centroid") else None,
+        "features_centroid": json.dumps(d["features_centroid"])
+        if d.get("features_centroid")
+        else None,
         "total_artists": d["total_artists"],
         "total_tracks": d["total_tracks"],
         "total_genres": d["total_genres"],
@@ -83,7 +85,9 @@ def load_profile(path: Path = PROFILE_PATH) -> UserProfile | None:
         "time_ranges": json.loads(row["time_ranges"]) if row["time_ranges"] else {},
         "saved_album_ids": json.loads(row["saved_album_ids"]) if row["saved_album_ids"] else [],
         "saved_track_ids": json.loads(row["saved_track_ids"]) if row["saved_track_ids"] else [],
-        "features_centroid": json.loads(row["features_centroid"]) if row["features_centroid"] else None,
+        "features_centroid": json.loads(row["features_centroid"])
+        if row["features_centroid"]
+        else None,
         "total_artists": int(row["total_artists"]),
         "total_tracks": int(row["total_tracks"]),
         "total_genres": int(row["total_genres"]),
@@ -100,5 +104,5 @@ def profile_age_hours(path: Path = PROFILE_PATH) -> float | None:
     if not path.exists():
         return None
     mtime = path.stat().st_mtime
-    age_seconds = (datetime.now().timestamp() - mtime)
+    age_seconds = datetime.now().timestamp() - mtime
     return age_seconds / 3600.0

@@ -9,6 +9,7 @@ Used to surface:
 - [FRESH] tags (new releases)
 - Community recommendations and weekly threads
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -18,14 +19,12 @@ import re
 import time
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
-from src.config import DATA_DIR
-from typing import Optional
-from urllib.parse import urljoin
-
 import feedparser  # type: ignore[import-untyped]
+
+from src.config import DATA_DIR
 
 log = logging.getLogger(__name__)
 
@@ -40,25 +39,27 @@ ATOM_NS = {"atom": "http://www.w3.org/2005/Atom"}
 @dataclass
 class RedditPost:
     """Single Reddit post from RSS feed."""
-    id: str                          # Reddit post ID (e.g. "t3_1uqsk4s")
+
+    id: str  # Reddit post ID (e.g. "t3_1uqsk4s")
     title: str
-    author: str                      # username (without /u/)
-    subreddit: str                   # subreddit name (without r/)
-    link: str                        # full URL to post
-    published: datetime              # post timestamp (UTC)
-    summary: str = ""                # text content
-    score: int = 0                   # upvote count (if visible)
-    comments: int = 0                # comment count (if visible)
+    author: str  # username (without /u/)
+    subreddit: str  # subreddit name (without r/)
+    link: str  # full URL to post
+    published: datetime  # post timestamp (UTC)
+    summary: str = ""  # text content
+    score: int = 0  # upvote count (if visible)
+    comments: int = 0  # comment count (if visible)
     tags: list[str] = field(default_factory=list)  # [FRESH], [LIVE], etc.
-    spotify_url: Optional[str] = None  # extracted Spotify link if any
-    bandcamp_url: Optional[str] = None  # extracted Bandcamp link if any
+    spotify_url: str | None = None  # extracted Spotify link if any
+    bandcamp_url: str | None = None  # extracted Bandcamp link if any
     other_links: list[str] = field(default_factory=list)
 
     @property
     def is_fresh(self) -> bool:
         """New release post (industry shorthand)."""
-        return any(t.lower() in ("[fresh]", "[fresh video]", "[fresh performance]")
-                   for t in self.tags)
+        return any(
+            t.lower() in ("[fresh]", "[fresh video]", "[fresh performance]") for t in self.tags
+        )
 
 
 class RedditClient:
@@ -94,7 +95,7 @@ class RedditClient:
         h = hashlib.sha256(key.encode()).hexdigest()[:16]
         return self._cache_dir / f"{h}.json"
 
-    def _get_cached(self, key: str) -> Optional[dict]:
+    def _get_cached(self, key: str) -> dict | None:
         path = self._cache_path(key)
         if not path.exists():
             return None
@@ -123,23 +124,26 @@ class RedditClient:
             log.debug(f"Reddit cache hit: {url}")
             # Cached data is the raw bytes as base64-encoded string
             import base64
+
             return base64.b64decode(cached["b64"])
 
         self._throttle()
         import urllib.request
+
         req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
         log.debug(f"Reddit fetch: {url}")
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = resp.read()
         # Cache as base64
         import base64
+
         self._save_cache(url, {"b64": base64.b64encode(data).decode()})
         return data
 
     def get_subreddit_feed(
         self,
         subreddit: str,
-        sort: str = "new",   # new, hot, top, rising
+        sort: str = "new",  # new, hot, top, rising
         limit: int = 25,
     ) -> list[RedditPost]:
         """Fetch posts from a subreddit.
@@ -215,7 +219,7 @@ class RedditClient:
                 posts.append(post)
         return posts
 
-    def _entry_to_post(self, entry: dict, subreddit: str) -> Optional[RedditPost]:
+    def _entry_to_post(self, entry: dict, subreddit: str) -> RedditPost | None:
         """Convert a feedparser entry to RedditPost."""
         try:
             post_id = entry.get("id", "")
@@ -234,16 +238,15 @@ class RedditClient:
             link = entry.get("link", "")
 
             # Published date
-            published_str = entry.get("published", "") or entry.get("updated", "")
             try:
                 # feedparser returns time.struct_time
                 published_tuple = entry.get("published_parsed") or entry.get("updated_parsed")
                 if published_tuple:
-                    published = datetime(*published_tuple[:6], tzinfo=timezone.utc)
+                    published = datetime(*published_tuple[:6], tzinfo=UTC)
                 else:
-                    published = datetime.now(timezone.utc)
+                    published = datetime.now(UTC)
             except Exception:
-                published = datetime.now(timezone.utc)
+                published = datetime.now(UTC)
 
             # Summary / content
             summary = entry.get("summary", "") or entry.get("description", "")
@@ -292,25 +295,39 @@ class RedditClient:
             link_el = entry.find("atom:link", ATOM_NS)
             link = link_el.get("href", "") if link_el is not None else ""
             author_el = entry.find("atom:author/atom:name", ATOM_NS)
-            author = (author_el.text or "").replace("/u/", "").replace("u/", "") if author_el is not None else ""
+            author = (
+                (author_el.text or "").replace("/u/", "").replace("u/", "")
+                if author_el is not None
+                else ""
+            )
             published_str = entry.findtext("atom:published", "", ATOM_NS)
             try:
                 published = datetime.fromisoformat(published_str.replace("Z", "+00:00"))
             except (ValueError, TypeError):
-                published = datetime.now(timezone.utc)
-            summary = entry.findtext("atom:content", "", ATOM_NS) or entry.findtext("atom:summary", "", ATOM_NS)
+                published = datetime.now(UTC)
+            summary = entry.findtext("atom:content", "", ATOM_NS) or entry.findtext(
+                "atom:summary", "", ATOM_NS
+            )
             tags = re.findall(r"\[[^\]]+\]", title)
             spotify_url = self._extract_spotify_url(summary)
             bandcamp_url = self._extract_bandcamp_url(summary)
             other_links = self._extract_other_links(summary)
             if post_id and title:
-                posts.append(RedditPost(
-                    id=post_id, title=title, author=author,
-                    subreddit=subreddit, link=link, published=published,
-                    summary=summary, tags=tags,
-                    spotify_url=spotify_url, bandcamp_url=bandcamp_url,
-                    other_links=other_links,
-                ))
+                posts.append(
+                    RedditPost(
+                        id=post_id,
+                        title=title,
+                        author=author,
+                        subreddit=subreddit,
+                        link=link,
+                        published=published,
+                        summary=summary,
+                        tags=tags,
+                        spotify_url=spotify_url,
+                        bandcamp_url=bandcamp_url,
+                        other_links=other_links,
+                    )
+                )
         return posts
 
     # ────────────────────────────────────────────────────────────
@@ -322,13 +339,13 @@ class RedditClient:
     )
     _BANDCAMP_RE = re.compile(r"https?://[a-zA-Z0-9_-]+\.bandcamp\.com/[^\s\"']*")
 
-    def _extract_spotify_url(self, text: str) -> Optional[str]:
+    def _extract_spotify_url(self, text: str) -> str | None:
         if not text:
             return None
         m = self._SPOTIFY_RE.search(text)
         return m.group(0) if m else None
 
-    def _extract_bandcamp_url(self, text: str) -> Optional[str]:
+    def _extract_bandcamp_url(self, text: str) -> str | None:
         if not text:
             return None
         m = self._BANDCAMP_RE.search(text)
@@ -342,9 +359,9 @@ class RedditClient:
         urls = re.findall(r'href="(https?://[^"]+)"', text)
         # Filter out music platforms we already track
         other = [
-            u for u in urls
-            if "open.spotify.com" not in u and "bandcamp.com" not in u
-            and "reddit.com" not in u
+            u
+            for u in urls
+            if "open.spotify.com" not in u and "bandcamp.com" not in u and "reddit.com" not in u
         ]
         return other[:5]  # cap
 
@@ -361,7 +378,8 @@ class RedditClient:
         return [p for p in posts if p.spotify_url]
 
     def filter_with_music_link(
-        self, posts: list[RedditPost],
+        self,
+        posts: list[RedditPost],
     ) -> list[RedditPost]:
         """Return posts with any music-platform link."""
         return [p for p in posts if p.spotify_url or p.bandcamp_url or p.other_links]

@@ -8,35 +8,33 @@ Commands:
   discover    — Find emerging artists (preview, no Spotify write)
   playlist    — Build and write a playlist to Spotify
 """
+
 from __future__ import annotations
 
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
-from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.table import Table
 
-from src.spotify.auth import (
-    get_spotify_client,
-    is_authenticated,
-    get_current_user_id,
-)
-from src.spotify.api_v2 import SpotifyAPIv2
+from src.analyzer.cache import PROFILE_PATH, load_profile, profile_age_hours, profile_exists
 from src.analyzer.profile import ProfileBuilder
-from src.analyzer.cache import profile_exists, profile_age_hours, load_profile, PROFILE_PATH
-from src.discovery.sources.lastfm import LastfmClient
-from src.discovery.sources.listenbrainz import ListenBrainzClient
 from src.discovery.ranking import (
     Candidate,
-    TuningConfig,
-    rank_artists,
     deduplicate_candidates,
+    rank_artists,
 )
+from src.discovery.sources.lastfm import LastfmClient
 from src.playlist.builder import PlaylistBuilder
+from src.spotify.api_v2 import SpotifyAPIv2
+from src.spotify.auth import (
+    get_current_user_id,
+    get_spotify_client,
+    is_authenticated,
+)
 
 # Set up logging
 logging.basicConfig(
@@ -68,18 +66,17 @@ app.add_typer(playlist_app, name="playlist")
 # Helpers
 # ────────────────────────────────────────────────────────────
 
+
 def _get_api() -> SpotifyAPIv2:
     """Get authenticated Spotify API wrapper, with friendly error."""
     if not is_authenticated():
-        console.print(
-            "[red]Not authenticated.[/red] Run: [bold]spotify-curator auth[/bold]"
-        )
+        console.print("[red]Not authenticated.[/red] Run: [bold]spotify-curator auth[/bold]")
         raise typer.Exit(code=1)
     sp = get_spotify_client()
     return SpotifyAPIv2(sp)
 
 
-def _load_profile_or_exit() -> "object":  # type: ignore
+def _load_profile_or_exit() -> object:  # type: ignore
     """Load cached profile or exit with friendly error."""
     if not profile_exists(PROFILE_PATH):
         console.print(
@@ -96,6 +93,7 @@ def _load_profile_or_exit() -> "object":  # type: ignore
 # ────────────────────────────────────────────────────────────
 # Top-level commands
 # ────────────────────────────────────────────────────────────
+
 
 @app.command()
 def init():
@@ -124,12 +122,11 @@ def auth():
             sp = get_spotify_client()
             user = sp.current_user()
             console.print(
-                f"[green]✓ Authenticated as:[/green] "
-                f"{user.get('display_name', '?')} ({user['id']})"
+                f"[green]✓ Authenticated as:[/green] {user.get('display_name', '?')} ({user['id']})"
             )
         except Exception as e:
             console.print(f"[red]✗ Authentication failed:[/red] {e}")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from e
 
 
 @app.command()
@@ -161,6 +158,7 @@ def status():
 # profile subcommands
 # ────────────────────────────────────────────────────────────
 
+
 @profile_app.command("build")
 def profile_build(
     no_features: bool = typer.Option(False, "--no-features", help="Skip audio features (faster)"),
@@ -180,7 +178,7 @@ def profile_build(
             profile = builder.build_and_save(include_features=not no_features)
         except Exception as e:
             console.print(f"[red]Profile build failed:[/red] {e}")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from e
 
     console.print(
         f"[green]✓ Profile built:[/green] "
@@ -219,7 +217,7 @@ def profile_show(
     # Features
     if profile.features_centroid:
         fc = profile.features_centroid
-        console.print(f"\n[bold cyan]Audio features centroid[/bold cyan]")
+        console.print("\n[bold cyan]Audio features centroid[/bold cyan]")
         console.print(
             f"  tempo={fc.tempo:.1f}  energy={fc.energy:.2f}  "
             f"valence={fc.valence:.2f}  acousticness={fc.acousticness:.2f}"
@@ -230,10 +228,13 @@ def profile_show(
 # discover subcommands
 # ────────────────────────────────────────────────────────────
 
+
 @discover_app.command("lastfm")
 def discover_lastfm(
     tag: str = typer.Option("indie rock", "--tag", "-t", help="Tag to search"),
-    period: str = typer.Option("6month", "--period", "-p", help="overall|7day|1month|3month|6month|12month"),
+    period: str = typer.Option(
+        "6month", "--period", "-p", help="overall|7day|1month|3month|6month|12month"
+    ),
     limit: int = typer.Option(30, "--limit", "-l", help="Max results"),
     rank: bool = typer.Option(True, "--rank/--no-rank", help="Apply ranking algorithm"),
 ):
@@ -288,7 +289,7 @@ def discover_listenbrainz(
     limit: int = typer.Option(10, "--limit", "-l"),
 ):
     """Find similar artists using ListenBrainz ML."""
-    profile = _load_profile_or_exit()
+    _load_profile_or_exit()
 
     # Get top artists' MBIDs from profile
     # For now, just sample from saved_album_ids (would need a MusicBrainz lookup)
@@ -297,14 +298,13 @@ def discover_listenbrainz(
         "[yellow]Note:[/yellow] ListenBrainz needs MBIDs. "
         "For now, the Spotify→MBID mapping is not implemented in v0.1.0."
     )
-    console.print(
-        "This command will work fully once MusicBrainz integration is added (FP-3b)."
-    )
+    console.print("This command will work fully once MusicBrainz integration is added (FP-3b).")
 
 
 # ────────────────────────────────────────────────────────────
 # playlist subcommands
 # ────────────────────────────────────────────────────────────
+
 
 @playlist_app.command("create")
 def playlist_create(
@@ -375,6 +375,7 @@ def playlist_create(
 # ────────────────────────────────────────────────────────────
 # Entry point
 # ────────────────────────────────────────────────────────────
+
 
 def main():
     """Main entry point for `python -m src.cli.main` or `spotify-curator`."""

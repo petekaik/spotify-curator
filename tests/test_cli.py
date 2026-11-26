@@ -2,16 +2,14 @@
 
 Uses CliRunner to test commands in isolation, with all Spotify calls mocked.
 """
-import pytest
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+
 from datetime import datetime
+from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
 
-from src.cli.main import app
 from src.analyzer.types import UserProfile
-
+from src.cli.main import app
 
 runner = CliRunner()
 
@@ -19,6 +17,7 @@ runner = CliRunner()
 # ────────────────────────────────────────────────────────────
 # Auth + status
 # ────────────────────────────────────────────────────────────
+
 
 class TestAuthCommand:
     def test_auth_success(self):
@@ -39,18 +38,22 @@ class TestAuthCommand:
 
 class TestStatusCommand:
     def test_status_no_auth_no_profile(self):
-        with patch("src.cli.main.is_authenticated", return_value=False), \
-             patch("src.cli.main.profile_exists", return_value=False):
+        with (
+            patch("src.cli.main.is_authenticated", return_value=False),
+            patch("src.cli.main.profile_exists", return_value=False),
+        ):
             result = runner.invoke(app, ["status"])
         assert result.exit_code == 0
         assert "Not authenticated" in result.stdout
         assert "Not built" in result.stdout
 
     def test_status_auth_and_profile(self):
-        with patch("src.cli.main.is_authenticated", return_value=True), \
-             patch("src.cli.main.get_current_user_id", return_value="u1"), \
-             patch("src.cli.main.profile_exists", return_value=True), \
-             patch("src.cli.main.profile_age_hours", return_value=2.5):
+        with (
+            patch("src.cli.main.is_authenticated", return_value=True),
+            patch("src.cli.main.get_current_user_id", return_value="u1"),
+            patch("src.cli.main.profile_exists", return_value=True),
+            patch("src.cli.main.profile_age_hours", return_value=2.5),
+        ):
             result = runner.invoke(app, ["status"])
         assert result.exit_code == 0
         assert "u1" in result.stdout
@@ -71,6 +74,7 @@ class TestInitCommand:
 # Profile subcommands
 # ────────────────────────────────────────────────────────────
 
+
 class TestProfileBuild:
     def test_profile_build_not_authenticated(self):
         with patch("src.cli.main.is_authenticated", return_value=False):
@@ -89,9 +93,11 @@ class TestProfileBuild:
             total_genres=10,
             total_tracks=100,
         )
-        with patch("src.cli.main.is_authenticated", return_value=True), \
-             patch("src.cli.main._get_api", return_value=mock_api), \
-             patch("src.cli.main.ProfileBuilder") as MockBuilder:
+        with (
+            patch("src.cli.main.is_authenticated", return_value=True),
+            patch("src.cli.main._get_api", return_value=mock_api),
+            patch("src.cli.main.ProfileBuilder") as MockBuilder,
+        ):
             instance = MockBuilder.return_value
             instance.build_and_save.return_value = mock_profile
             result = runner.invoke(app, ["profile", "build"])
@@ -113,8 +119,10 @@ class TestProfileShow:
             genre_weights={"indie": 0.5, "rock": 0.3, "pop": 0.2},
             artist_weights={"a1": 0.7, "a2": 0.3},
         )
-        with patch("src.cli.main.profile_exists", return_value=True), \
-             patch("src.cli.main.load_profile", return_value=profile):
+        with (
+            patch("src.cli.main.profile_exists", return_value=True),
+            patch("src.cli.main.load_profile", return_value=profile),
+        ):
             result = runner.invoke(app, ["profile", "show", "--top", "5"])
         assert result.exit_code == 0
         assert "indie" in result.stdout
@@ -124,6 +132,7 @@ class TestProfileShow:
 # ────────────────────────────────────────────────────────────
 # Discover subcommands
 # ────────────────────────────────────────────────────────────
+
 
 class TestDiscoverLastfm:
     def test_no_api_key(self):
@@ -135,8 +144,10 @@ class TestDiscoverLastfm:
         assert "LASTFM_API_KEY" in result.stdout
 
     def test_no_results(self):
-        with patch("src.cli.main.LastfmClient") as MockClient, \
-             patch("src.cli.main.is_authenticated", return_value=True):
+        with (
+            patch("src.cli.main.LastfmClient") as MockClient,
+            patch("src.cli.main.is_authenticated", return_value=True),
+        ):
             instance = MockClient.return_value
             instance._api_key = "fake"
             instance.tag_get_top_artists.return_value = []
@@ -147,6 +158,7 @@ class TestDiscoverLastfm:
     def test_no_ranking_just_lists(self):
         """If --no-rank, just show raw list without needing profile."""
         from src.discovery.sources.lastfm import LastfmArtist
+
         with patch("src.cli.main.LastfmClient") as MockClient:
             instance = MockClient.return_value
             instance._api_key = "fake"
@@ -161,18 +173,23 @@ class TestDiscoverLastfm:
 
     def test_with_ranking(self):
         from src.discovery.sources.lastfm import LastfmArtist
+
         profile = UserProfile(
             user_id="u1",
             updated_at=datetime.now(),
             genre_weights={"indie rock": 1.0},
         )
-        with patch("src.cli.main.LastfmClient") as MockClient, \
-             patch("src.cli.main.profile_exists", return_value=True), \
-             patch("src.cli.main.load_profile", return_value=profile):
+        with (
+            patch("src.cli.main.LastfmClient") as MockClient,
+            patch("src.cli.main.profile_exists", return_value=True),
+            patch("src.cli.main.load_profile", return_value=profile),
+        ):
             instance = MockClient.return_value
             instance._api_key = "fake"
             instance.tag_get_top_artists.return_value = [
-                LastfmArtist(name="Matching Artist", listeners=5000, mbid="m1", tags=["indie rock"]),
+                LastfmArtist(
+                    name="Matching Artist", listeners=5000, mbid="m1", tags=["indie rock"]
+                ),
                 LastfmArtist(name="Wrong Genre", listeners=3000, mbid="m2", tags=["country"]),
             ]
             result = runner.invoke(app, ["discover", "lastfm", "--tag", "indie rock"])
@@ -183,10 +200,13 @@ class TestDiscoverLastfm:
 class TestDiscoverListenbrainz:
     def test_prints_notice(self):
         """v0.1.0: Spotify→MBID mapping not yet implemented."""
-        with patch("src.cli.main.profile_exists", return_value=True), \
-             patch("src.cli.main.load_profile", return_value=UserProfile(
-                 user_id="u1", updated_at=datetime.now()
-             )):
+        with (
+            patch("src.cli.main.profile_exists", return_value=True),
+            patch(
+                "src.cli.main.load_profile",
+                return_value=UserProfile(user_id="u1", updated_at=datetime.now()),
+            ),
+        ):
             result = runner.invoke(app, ["discover", "listenbrainz"])
         assert result.exit_code == 0
         assert "MusicBrainz" in result.stdout
@@ -196,14 +216,18 @@ class TestDiscoverListenbrainz:
 # Playlist subcommands
 # ────────────────────────────────────────────────────────────
 
+
 class TestPlaylistCreate:
     def test_no_lastfm_key(self):
-        with patch("src.cli.main._get_api"), \
-             patch("src.cli.main.profile_exists", return_value=True), \
-             patch("src.cli.main.load_profile", return_value=UserProfile(
-                 user_id="u1", updated_at=datetime.now()
-             )), \
-             patch("src.cli.main.LastfmClient") as MockClient:
+        with (
+            patch("src.cli.main._get_api"),
+            patch("src.cli.main.profile_exists", return_value=True),
+            patch(
+                "src.cli.main.load_profile",
+                return_value=UserProfile(user_id="u1", updated_at=datetime.now()),
+            ),
+            patch("src.cli.main.LastfmClient") as MockClient,
+        ):
             instance = MockClient.return_value
             instance._api_key = ""
             result = runner.invoke(app, ["playlist", "create", "Test"])
@@ -213,6 +237,7 @@ class TestPlaylistCreate:
     def test_dry_run_skips_spotify_write(self):
         from src.discovery.sources.lastfm import LastfmArtist
         from src.playlist.builder import BuiltPlaylist
+
         profile = UserProfile(
             user_id="u1",
             updated_at=datetime.now(),
@@ -224,11 +249,13 @@ class TestPlaylistCreate:
             tracks=[],
             total_artist_count=0,
         )
-        with patch("src.cli.main._get_api"), \
-             patch("src.cli.main.profile_exists", return_value=True), \
-             patch("src.cli.main.load_profile", return_value=profile), \
-             patch("src.cli.main.LastfmClient") as MockClient, \
-             patch("src.cli.main.PlaylistBuilder") as MockBuilder:
+        with (
+            patch("src.cli.main._get_api"),
+            patch("src.cli.main.profile_exists", return_value=True),
+            patch("src.cli.main.load_profile", return_value=profile),
+            patch("src.cli.main.LastfmClient") as MockClient,
+            patch("src.cli.main.PlaylistBuilder") as MockBuilder,
+        ):
             lfm_instance = MockClient.return_value
             lfm_instance._api_key = "fake"
             lfm_instance.tag_get_top_artists.return_value = [
@@ -236,9 +263,15 @@ class TestPlaylistCreate:
             ]
             builder_instance = MockBuilder.return_value
             builder_instance.build.return_value = mock_playlist
-            result = runner.invoke(app, [
-                "playlist", "create", "Test", "--dry-run",
-            ])
+            result = runner.invoke(
+                app,
+                [
+                    "playlist",
+                    "create",
+                    "Test",
+                    "--dry-run",
+                ],
+            )
         assert result.exit_code == 0
         # write_to_spotify was NOT called
         builder_instance.write_to_spotify.assert_not_called()
@@ -247,6 +280,7 @@ class TestPlaylistCreate:
     def test_full_flow_writes_to_spotify(self):
         from src.discovery.sources.lastfm import LastfmArtist
         from src.playlist.builder import BuiltPlaylist, PlaylistTrack
+
         profile = UserProfile(
             user_id="u1",
             updated_at=datetime.now(),
@@ -260,11 +294,13 @@ class TestPlaylistCreate:
             ],
             total_artist_count=1,
         )
-        with patch("src.cli.main._get_api"), \
-             patch("src.cli.main.profile_exists", return_value=True), \
-             patch("src.cli.main.load_profile", return_value=profile), \
-             patch("src.cli.main.LastfmClient") as MockClient, \
-             patch("src.cli.main.PlaylistBuilder") as MockBuilder:
+        with (
+            patch("src.cli.main._get_api"),
+            patch("src.cli.main.profile_exists", return_value=True),
+            patch("src.cli.main.load_profile", return_value=profile),
+            patch("src.cli.main.LastfmClient") as MockClient,
+            patch("src.cli.main.PlaylistBuilder") as MockBuilder,
+        ):
             lfm_instance = MockClient.return_value
             lfm_instance._api_key = "fake"
             lfm_instance.tag_get_top_artists.return_value = [
@@ -273,8 +309,11 @@ class TestPlaylistCreate:
             builder_instance = MockBuilder.return_value
             builder_instance.build.return_value = mock_playlist
             written = BuiltPlaylist(
-                name="Indie Mix", description="", tracks=mock_playlist.tracks,
-                total_artist_count=1, spotify_playlist_id="new-playlist-id",
+                name="Indie Mix",
+                description="",
+                tracks=mock_playlist.tracks,
+                total_artist_count=1,
+                spotify_playlist_id="new-playlist-id",
             )
             builder_instance.write_to_spotify.return_value = written
             result = runner.invoke(app, ["playlist", "create", "Indie Mix"])

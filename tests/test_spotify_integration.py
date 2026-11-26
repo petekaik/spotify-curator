@@ -10,17 +10,20 @@ The cassettes live in tests/fixtures/cassettes/ and document the exact
 request/response shape we depend on. If Spotify changes an endpoint, the
 tests will fail loudly and force us to re-record or update the client.
 """
+
 import json
+from pathlib import Path
+
 import pytest
 import vcr
 
 from src.spotify.api_v2 import SpotifyAPIv2
 
-
 # ────────────────────────────────────────────────────────────
 # Cassette configuration
 # ────────────────────────────────────────────────────────────
 
+PROJECT_ROOT = str(Path(__file__).resolve().parents[1])
 CASSETTE_DIR = "tests/fixtures/cassettes"
 SPOTIFY_MATCH = ["api.spotify.com"]
 
@@ -33,7 +36,6 @@ def _cassette(name: str, record_mode: str = "none"):
 
     VCR 8.x API: use cassette_library_dir + cassette name, not cassette_name.
     """
-    import os
     return vcr.VCR(
         cassette_library_dir=CASSETTE_DIR,
         record_mode=record_mode,
@@ -46,6 +48,7 @@ def _cassette(name: str, record_mode: str = "none"):
 # ────────────────────────────────────────────────────────────
 # Helper: build a stub spotipy client that records real responses
 # ────────────────────────────────────────────────────────────
+
 
 class CassetteSpotipyClient:
     """A minimal spotipy-like client that records (method, url) and
@@ -69,7 +72,11 @@ class CassetteSpotipyClient:
         body = kwargs.get("body")
         headers = {"Authorization": "Bearer fake-token"}
         return self._session.request(
-            method, url, params=params, json=body, headers=headers,
+            method,
+            url,
+            params=params,
+            json=body,
+            headers=headers,
         )
 
     def _get(self, path, **kwargs):
@@ -89,8 +96,9 @@ class CassetteSpotipyClient:
 def vcr_cassette_dir(tmp_path):
     """Point VCR at our cassette dir."""
     import os
+
     cwd = os.getcwd()
-    os.chdir("/Users/petekaik/projects/spotify-curator")
+    os.chdir(PROJECT_ROOT)
     yield CASSETTE_DIR
     os.chdir(cwd)
 
@@ -129,24 +137,26 @@ SAMPLE_CASSETTE_PLAYLIST_ITEMS = {
             "response": {
                 "status": {"code": 200, "message": "OK"},
                 "headers": {"Content-Type": ["application/json"]},
-                "body": json.dumps({
-                    "items": [
-                        {
-                            "item": {
-                                "id": "track1",
-                                "name": "Test Track 1",
-                                "uri": "spotify:track:track1",
-                                "duration_ms": 180000,
-                                "artists": [{"id": "artist1", "name": "Artist 1"}],
-                                "album": {"id": "album1", "name": "Album 1"},
-                            },
-                            "added_at": "2026-07-01T12:00:00Z",
-                        }
-                    ],
-                    "total": 1,
-                    "limit": 50,
-                    "offset": 0,
-                }),
+                "body": json.dumps(
+                    {
+                        "items": [
+                            {
+                                "item": {
+                                    "id": "track1",
+                                    "name": "Test Track 1",
+                                    "uri": "spotify:track:track1",
+                                    "duration_ms": 180000,
+                                    "artists": [{"id": "artist1", "name": "Artist 1"}],
+                                    "album": {"id": "album1", "name": "Album 1"},
+                                },
+                                "added_at": "2026-07-01T12:00:00Z",
+                            }
+                        ],
+                        "total": 1,
+                        "limit": 50,
+                        "offset": 0,
+                    }
+                ),
             },
         }
     ],
@@ -164,18 +174,20 @@ SAMPLE_CASSETTE_ARTIST_ALBUMS = {
             "response": {
                 "status": {"code": 200, "message": "OK"},
                 "headers": {"Content-Type": ["application/json"]},
-                "body": json.dumps({
-                    "items": [
-                        {
-                            "id": "album1",
-                            "name": "Album 1",
-                            "uri": "spotify:album:album1",
-                            "release_date": "2026-01-15",
-                            "total_tracks": 12,
-                        }
-                    ],
-                    "total": 1,
-                }),
+                "body": json.dumps(
+                    {
+                        "items": [
+                            {
+                                "id": "album1",
+                                "name": "Album 1",
+                                "uri": "spotify:album:album1",
+                                "release_date": "2026-01-15",
+                                "total_tracks": 12,
+                            }
+                        ],
+                        "total": 1,
+                    }
+                ),
             },
         }
     ],
@@ -186,19 +198,20 @@ SAMPLE_CASSETTE_ARTIST_ALBUMS = {
 # Tests
 # ────────────────────────────────────────────────────────────
 
+
 class TestLibraryContains:
     """GET /me/library/contains — check if user has saved tracks."""
 
     def test_returns_bool_list(self, tmp_path):
         """Cassette: [True, False] for two tracks."""
-        with _cassette("library_contains_tracks").use_cassette(
-            "library_contains_tracks"
-        ) as cass:
+        with _cassette("library_contains_tracks").use_cassette("library_contains_tracks"):
             # Manually populate cassette if empty (CI without real API)
             import os
+
             cassette_path = os.path.join(
-                "/Users/petekaik/projects/spotify-curator",
-                CASSETTE_DIR, "library_contains_tracks.json",
+                PROJECT_ROOT,
+                CASSETTE_DIR,
+                "library_contains_tracks.json",
             )
             if not os.path.exists(cassette_path):
                 os.makedirs(os.path.dirname(cassette_path), exist_ok=True)
@@ -206,6 +219,7 @@ class TestLibraryContains:
                     json.dump(SAMPLE_CASSETTE_LIBRARY_CONTAINS, f)
 
             from unittest.mock import MagicMock
+
             sp = MagicMock()
             sp._get = MagicMock(return_value=[True, False])
             api = SpotifyAPIv2(sp)
@@ -225,20 +239,25 @@ class TestPlaylistItems:
 
     def test_returns_items(self):
         from unittest.mock import MagicMock
+
         sp = MagicMock()
-        sp._get = MagicMock(return_value={
-            "items": [{
-                "item": {
-                    "id": "track1",
-                    "name": "Test",
-                    "uri": "spotify:track:track1",
-                },
-                "added_at": "2026-07-01T12:00:00Z",
-            }],
-            "total": 1,
-            "limit": 50,
-            "offset": 0,
-        })
+        sp._get = MagicMock(
+            return_value={
+                "items": [
+                    {
+                        "item": {
+                            "id": "track1",
+                            "name": "Test",
+                            "uri": "spotify:track:track1",
+                        },
+                        "added_at": "2026-07-01T12:00:00Z",
+                    }
+                ],
+                "total": 1,
+                "limit": 50,
+                "offset": 0,
+            }
+        )
         api = SpotifyAPIv2(sp)
         result = api.playlist_items("playlist123", limit=50)
         assert len(result["items"]) == 1
@@ -251,15 +270,20 @@ class TestArtistAlbums:
 
     def test_album_shape(self):
         from unittest.mock import MagicMock
+
         sp = MagicMock()
-        sp._get = MagicMock(return_value={
-            "items": [{
-                "id": "album1",
-                "name": "Album 1",
-                "release_date": "2026-01-15",
-            }],
-            "total": 1,
-        })
+        sp._get = MagicMock(
+            return_value={
+                "items": [
+                    {
+                        "id": "album1",
+                        "name": "Album 1",
+                        "release_date": "2026-01-15",
+                    }
+                ],
+                "total": 1,
+            }
+        )
         api = SpotifyAPIv2(sp)
         result = api._sp._get("artists/artist1/albums", limit=10)
         assert result["items"][0]["id"] == "album1"
@@ -270,21 +294,26 @@ class TestArtistAlbums:
 # Cassette validation
 # ────────────────────────────────────────────────────────────
 
+
 class TestCassettesExist:
     """Verify our cassettes are present and well-formed."""
 
     def test_cassette_dir_exists(self):
         import os
+
         path = os.path.join(
-            "/Users/petekaik/projects/spotify-curator", CASSETTE_DIR,
+            PROJECT_ROOT,
+            CASSETTE_DIR,
         )
         assert os.path.isdir(path), f"Missing cassette dir: {path}"
 
     def test_sample_cassettes_valid(self):
         """All cassettes must be valid VCR JSON format."""
         import os
+
         path = os.path.join(
-            "/Users/petekaik/projects/spotify-curator", CASSETTE_DIR,
+            PROJECT_ROOT,
+            CASSETTE_DIR,
         )
         if not os.path.isdir(path):
             pytest.skip("Cassette dir not yet created")
@@ -304,11 +333,13 @@ class TestCassettesExist:
 # vcrpy round-trip test
 # ────────────────────────────────────────────────────────────
 
+
 class TestVcrpyMechanism:
     """Verify vcrpy is installed and can be configured correctly."""
 
     def test_vcrpy_imported(self):
         import vcr
+
         assert vcr.__version__  # Just verify import works
 
     def test_vcrpy_config(self, tmp_path):

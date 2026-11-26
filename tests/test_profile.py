@@ -1,22 +1,24 @@
 """Unit tests for analyzer (FP-2)."""
-import pytest
-from unittest.mock import MagicMock
-from datetime import datetime
 
-from src.analyzer.types import ArtistRef, TrackRef, TimeRangeData, UserProfile, TrackFeatures
+from datetime import datetime
+from unittest.mock import MagicMock
+
+import pytest
+
+from src.analyzer.cache import load_profile, profile_exists, save_profile
+from src.analyzer.profile import ProfileBuilder
+from src.analyzer.types import ArtistRef, TimeRangeData, TrackFeatures, TrackRef, UserProfile
 from src.analyzer.weights import (
     _position_weight,
     compute_artist_weights,
-    compute_genre_weights,
     compute_features_centroid,
+    compute_genre_weights,
 )
-from src.analyzer.cache import save_profile, load_profile, profile_exists
-from src.analyzer.profile import ProfileBuilder
-
 
 # ────────────────────────────────────────────────────────────
 # Fixtures
 # ────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def mock_api():
@@ -24,8 +26,7 @@ def mock_api():
     sp = MagicMock()
     # /me
     sp._get.side_effect = lambda path, **kw: (
-        {"id": "user123", "display_name": "TestUser"} if path == "me"
-        else None
+        {"id": "user123", "display_name": "TestUser"} if path == "me" else None
     )
     api = MagicMock()
     api._sp = sp
@@ -108,6 +109,7 @@ def sample_time_ranges(sample_artists_short, sample_artists_medium, sample_track
 # Types
 # ────────────────────────────────────────────────────────────
 
+
 class TestTypes:
     def test_userprofile_roundtrip(self):
         """Profile → dict → Profile preserves data."""
@@ -141,6 +143,7 @@ class TestTypes:
 # ────────────────────────────────────────────────────────────
 # Weights
 # ────────────────────────────────────────────────────────────
+
 
 class TestWeights:
     def test_position_weight_top(self):
@@ -196,6 +199,7 @@ class TestWeights:
 # Cache (Parquet roundtrip)
 # ────────────────────────────────────────────────────────────
 
+
 class TestCache:
     def test_save_and_load_roundtrip(self, tmp_path):
         path = tmp_path / "profile.parquet"
@@ -237,6 +241,7 @@ class TestCache:
 # Profile builder
 # ────────────────────────────────────────────────────────────
 
+
 class TestProfileBuilder:
     def test_user_id_fetched(self, mock_api):
         api, sp = mock_api
@@ -248,7 +253,9 @@ class TestProfileBuilder:
         builder = ProfileBuilder(api)
         assert builder._user_id == "user123"
 
-    def test_build_calls_all_endpoints(self, mock_api, sample_artists_short, sample_tracks_short, sample_artists_medium):
+    def test_build_calls_all_endpoints(
+        self, mock_api, sample_artists_short, sample_tracks_short, sample_artists_medium
+    ):
         api, sp = mock_api
 
         # Mock responses for each call
@@ -285,7 +292,9 @@ class TestProfileBuilder:
         assert sum(profile.artist_weights.values()) == pytest.approx(1.0, abs=0.01)
         assert "indie rock" in profile.genre_weights or "dream pop" in profile.genre_weights
 
-    def test_save_and_load_via_builder(self, mock_api, sample_artists_short, sample_tracks_short, tmp_path):
+    def test_save_and_load_via_builder(
+        self, mock_api, sample_artists_short, sample_tracks_short, tmp_path
+    ):
         api, sp = mock_api
 
         def mock_get(path, **kw):
@@ -336,10 +345,7 @@ class TestProfileBuilder:
         builder.build(include_features=False)
 
         # Verify /me/library was called with type=album
-        library_calls = [
-            c for c in sp._get.call_args_list
-            if c[0][0] == "me/library"
-        ]
+        library_calls = [c for c in sp._get.call_args_list if c[0][0] == "me/library"]
         assert len(library_calls) >= 1
         assert library_calls[0][1].get("type") == "album"
 
@@ -348,10 +354,16 @@ class TestLastfmGenreFallback:
     def test_fills_missing_genres_from_lastfm(self):
         lastfm = MagicMock(_api_key="fake")
         lastfm.artist_tags.side_effect = lambda name: {"A": ["dream pop", "shoegaze"]}.get(name, [])
-        tr = {"short_term": TimeRangeData("short_term", 0.5, artists=[
-            ArtistRef(id="1", name="A"),
-            ArtistRef(id="2", name="B", genres=["jazz"]),
-        ])}
+        tr = {
+            "short_term": TimeRangeData(
+                "short_term",
+                0.5,
+                artists=[
+                    ArtistRef(id="1", name="A"),
+                    ArtistRef(id="2", name="B", genres=["jazz"]),
+                ],
+            )
+        }
         builder = ProfileBuilder(MagicMock(), user_id="u", lastfm=lastfm)
         builder._fill_genres_from_lastfm(tr)
         assert tr["short_term"].artists[0].genres == ["dream pop", "shoegaze"]

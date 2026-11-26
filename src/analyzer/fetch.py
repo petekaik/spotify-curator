@@ -9,22 +9,22 @@ Wraps the multiple endpoints needed to build a user profile:
 All requests go through our api_v2 wrapper to ensure we use the correct
 Feb 2026 endpoints.
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
+from src.analyzer.types import ArtistRef, TimeRangeData, TrackRef
 from src.spotify.api_v2 import SpotifyAPIv2
-from src.analyzer.types import ArtistRef, TrackRef, TimeRangeData
 
 log = logging.getLogger(__name__)
 
 # Spotify's official time-range identifiers
 TIME_RANGES = ("short_term", "medium_term", "long_term")
 TIME_RANGE_WEIGHTS = {
-    "short_term": 0.5,   # last 4 weeks — most important
+    "short_term": 0.5,  # last 4 weeks — most important
     "medium_term": 0.3,  # last 6 months — stable preferences
-    "long_term": 0.2,    # all time — foundational taste
+    "long_term": 0.2,  # all time — foundational taste
 }
 
 
@@ -52,11 +52,14 @@ def fetch_top_artists(
 
     # Endpoint: GET /me/top/artists
     # spotipy uses ._get which handles auth + base URL
-    result = api._sp._get(
-        "me/top/artists",
-        time_range=time_range,
-        limit=min(limit, 50),
-    ) or {}
+    result = (
+        api._sp._get(
+            "me/top/artists",
+            time_range=time_range,
+            limit=min(limit, 50),
+        )
+        or {}
+    )
 
     artists = []
     for item in result.get("items", []):
@@ -72,13 +75,15 @@ def fetch_top_artists(
             followers = int(followers_raw or 0)
         # Defensive: genres may be missing
         genres = item.get("genres") or []
-        artists.append(ArtistRef(
-            id=item["id"],
-            name=item["name"],
-            genres=genres,
-            popularity=popularity,
-            followers=followers,
-        ))
+        artists.append(
+            ArtistRef(
+                id=item["id"],
+                name=item["name"],
+                genres=genres,
+                popularity=popularity,
+                followers=followers,
+            )
+        )
     return artists
 
 
@@ -100,11 +105,14 @@ def fetch_top_tracks(
     if time_range not in TIME_RANGES:
         raise ValueError(f"Invalid time_range: {time_range}")
 
-    result = api._sp._get(
-        "me/top/tracks",
-        time_range=time_range,
-        limit=min(limit, 50),
-    ) or {}
+    result = (
+        api._sp._get(
+            "me/top/tracks",
+            time_range=time_range,
+            limit=min(limit, 50),
+        )
+        or {}
+    )
 
     tracks = []
     for item in result.get("items", []):
@@ -112,17 +120,19 @@ def fetch_top_tracks(
         artist_names = [a["name"] for a in item.get("artists", [])]
         album = item.get("album", {}) or {}
         # Track popularity still exists (only artist popularity removed)
-        tracks.append(TrackRef(
-            id=item["id"],
-            name=item["name"],
-            uri=item.get("uri", f"spotify:track:{item['id']}"),
-            artist_ids=artist_ids,
-            artist_names=artist_names,
-            album_id=album.get("id"),
-            album_name=album.get("name"),
-            duration_ms=item.get("duration_ms", 0),
-            popularity=item.get("popularity", 0),
-        ))
+        tracks.append(
+            TrackRef(
+                id=item["id"],
+                name=item["name"],
+                uri=item.get("uri", f"spotify:track:{item['id']}"),
+                artist_ids=artist_ids,
+                artist_names=artist_names,
+                album_id=album.get("id"),
+                album_name=album.get("name"),
+                duration_ms=item.get("duration_ms", 0),
+                popularity=item.get("popularity", 0),
+            )
+        )
     return tracks
 
 
@@ -146,7 +156,11 @@ def fetch_saved_albums(
         )
         # NEW endpoint returns 'items' or 'albums' depending on doc version
         items = result.get("items", result.get("albums", []))
-        return [item.get("album", item).get("id") for item in items if item.get("album") or item.get("id")]
+        return [
+            item.get("album", item).get("id")
+            for item in items
+            if item.get("album") or item.get("id")
+        ]
     except Exception as e:
         # Fall back to old endpoint (deprecated but might still work)
         log.warning(f"NEW /me/library failed ({e}), falling back to old /me/albums")

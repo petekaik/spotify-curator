@@ -1,8 +1,7 @@
 """Unit tests for Reddit RSS client (FP-3d)."""
-import base64
-from datetime import datetime, timezone
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+
+from datetime import UTC, datetime
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -10,10 +9,7 @@ from src.discovery.sources.reddit import (
     RedditClient,
     RedditPost,
     fetch_subreddit,
-    USER_AGENT,
-    ATOM_NS,
 )
-
 
 # ────────────────────────────────────────────────────────────
 # Sample RSS feed (real Reddit /r/indieheads/.rss)
@@ -52,6 +48,7 @@ SAMPLE_RSS = b"""<?xml version="1.0" encoding="UTF-8"?>
 # ────────────────────────────────────────────────────────────
 # Parsing tests
 # ────────────────────────────────────────────────────────────
+
 
 class TestParsing:
     def test_parse_full_feed(self, tmp_path):
@@ -135,29 +132,50 @@ class TestParsing:
 # Filtering tests
 # ────────────────────────────────────────────────────────────
 
+
 class TestFiltering:
     @pytest.fixture
     def sample_posts(self):
         return [
             RedditPost(
-                id="1", title="[FRESH] Test 1", author="a", subreddit="r",
-                link="", published=datetime.now(timezone.utc),
-                tags=["[FRESH]"], spotify_url="https://open.spotify.com/track/x",
+                id="1",
+                title="[FRESH] Test 1",
+                author="a",
+                subreddit="r",
+                link="",
+                published=datetime.now(UTC),
+                tags=["[FRESH]"],
+                spotify_url="https://open.spotify.com/track/x",
             ),
             RedditPost(
-                id="2", title="[FRESH VIDEO] Test 2", author="b", subreddit="r",
-                link="", published=datetime.now(timezone.utc),
-                tags=["[FRESH VIDEO]"], spotify_url=None,
+                id="2",
+                title="[FRESH VIDEO] Test 2",
+                author="b",
+                subreddit="r",
+                link="",
+                published=datetime.now(UTC),
+                tags=["[FRESH VIDEO]"],
+                spotify_url=None,
             ),
             RedditPost(
-                id="3", title="Weekly thread", author="c", subreddit="r",
-                link="", published=datetime.now(timezone.utc),
-                tags=[], spotify_url="https://open.spotify.com/track/y",
+                id="3",
+                title="Weekly thread",
+                author="c",
+                subreddit="r",
+                link="",
+                published=datetime.now(UTC),
+                tags=[],
+                spotify_url="https://open.spotify.com/track/y",
             ),
             RedditPost(
-                id="4", title="Discussion", author="d", subreddit="r",
-                link="", published=datetime.now(timezone.utc),
-                tags=[], spotify_url=None,
+                id="4",
+                title="Discussion",
+                author="d",
+                subreddit="r",
+                link="",
+                published=datetime.now(UTC),
+                tags=[],
+                spotify_url=None,
             ),
         ]
 
@@ -183,36 +201,61 @@ class TestFiltering:
 class TestFreshDetection:
     def test_fresh_tag(self):
         post = RedditPost(
-            id="1", title="[FRESH] Song", author="a", subreddit="r",
-            link="", published=datetime.now(timezone.utc), tags=["[FRESH]"],
+            id="1",
+            title="[FRESH] Song",
+            author="a",
+            subreddit="r",
+            link="",
+            published=datetime.now(UTC),
+            tags=["[FRESH]"],
         )
         assert post.is_fresh
 
     def test_fresh_video_tag(self):
         post = RedditPost(
-            id="1", title="[FRESH VIDEO] Song", author="a", subreddit="r",
-            link="", published=datetime.now(timezone.utc), tags=["[FRESH VIDEO]"],
+            id="1",
+            title="[FRESH VIDEO] Song",
+            author="a",
+            subreddit="r",
+            link="",
+            published=datetime.now(UTC),
+            tags=["[FRESH VIDEO]"],
         )
         assert post.is_fresh
 
     def test_fresh_performance_tag(self):
         post = RedditPost(
-            id="1", title="[FRESH PERFORMANCE] Song", author="a", subreddit="r",
-            link="", published=datetime.now(timezone.utc), tags=["[FRESH PERFORMANCE]"],
+            id="1",
+            title="[FRESH PERFORMANCE] Song",
+            author="a",
+            subreddit="r",
+            link="",
+            published=datetime.now(UTC),
+            tags=["[FRESH PERFORMANCE]"],
         )
         assert post.is_fresh
 
     def test_no_fresh_tag(self):
         post = RedditPost(
-            id="1", title="Just a title", author="a", subreddit="r",
-            link="", published=datetime.now(timezone.utc), tags=[],
+            id="1",
+            title="Just a title",
+            author="a",
+            subreddit="r",
+            link="",
+            published=datetime.now(UTC),
+            tags=[],
         )
         assert not post.is_fresh
 
     def test_unrelated_brackets(self):
         post = RedditPost(
-            id="1", title="Some [REVIEW] post", author="a", subreddit="r",
-            link="", published=datetime.now(timezone.utc), tags=["[REVIEW]"],
+            id="1",
+            title="Some [REVIEW] post",
+            author="a",
+            subreddit="r",
+            link="",
+            published=datetime.now(UTC),
+            tags=["[REVIEW]"],
         )
         assert not post.is_fresh
 
@@ -220,6 +263,7 @@ class TestFreshDetection:
 # ────────────────────────────────────────────────────────────
 # Subreddit normalization
 # ────────────────────────────────────────────────────────────
+
 
 class TestSubredditNormalization:
     def test_strips_r_prefix(self, tmp_path):
@@ -253,14 +297,17 @@ class TestSubredditNormalization:
 # Multi-subreddit
 # ────────────────────────────────────────────────────────────
 
+
 class TestMultiSubreddit:
     def test_merges_results(self, tmp_path):
         client = RedditClient(cache_dir=tmp_path)
         call_count = 0
+
         def fake_fetch(url):
             nonlocal call_count
             call_count += 1
             return SAMPLE_RSS
+
         with patch.object(client, "_fetch", side_effect=fake_fetch):
             posts = client.get_multi_subreddit_feed(["indieheads", "listentothis"], limit=10)
         assert len(posts) > 0
@@ -277,21 +324,25 @@ class TestMultiSubreddit:
 # Caching
 # ────────────────────────────────────────────────────────────
 
+
 class TestCaching:
     def test_caches_response(self, tmp_path):
         client = RedditClient(cache_dir=tmp_path, cache_ttl_seconds=3600)
         call_count = 0
+
         def fake_urlopen(req, **kwargs):
             nonlocal call_count
             call_count += 1
-            from io import BytesIO
             resp = MagicMock()
             resp.read = lambda: SAMPLE_RSS
             resp.__enter__ = lambda s: resp
             resp.__exit__ = lambda s, *a: None
             return resp
-        with patch("urllib.request.urlopen", side_effect=fake_urlopen), \
-             patch.object(client, "_throttle"):
+
+        with (
+            patch("urllib.request.urlopen", side_effect=fake_urlopen),
+            patch.object(client, "_throttle"),
+        ):
             client.get_subreddit_feed("indieheads")
             client.get_subreddit_feed("indieheads")
         # Second call should be cached
@@ -301,9 +352,11 @@ class TestCaching:
         """Throttle is called from inside _fetch."""
         client = RedditClient(cache_dir=tmp_path)
         # Bypass cache, but use real _throttle
-        with patch.object(client, "_get_cached", return_value=None), \
-             patch.object(client, "_throttle") as mock_throttle, \
-             patch("urllib.request.urlopen") as mock_urlopen:
+        with (
+            patch.object(client, "_get_cached", return_value=None),
+            patch.object(client, "_throttle") as mock_throttle,
+            patch("urllib.request.urlopen") as mock_urlopen,
+        ):
             mock_urlopen.return_value.__enter__.return_value.read.return_value = SAMPLE_RSS
             client.get_subreddit_feed("indieheads")
         mock_throttle.assert_called()
@@ -318,6 +371,7 @@ class TestCaching:
 # ────────────────────────────────────────────────────────────
 # Link extraction
 # ────────────────────────────────────────────────────────────
+
 
 class TestLinkExtraction:
     @pytest.fixture
@@ -341,11 +395,11 @@ class TestLinkExtraction:
         assert client._extract_bandcamp_url(text) == "https://artist.bandcamp.com/track/song-name"
 
     def test_other_links_excludes_spotify(self, client):
-        text = '''
+        text = """
         <a href="https://open.spotify.com/track/x">Sp</a>
         <a href="https://youtube.com/watch?v=abc">YT</a>
         <a href="https://soundcloud.com/track">SC</a>
-        '''
+        """
         other = client._extract_other_links(text)
         assert "https://open.spotify.com/track/x" not in other
         assert "https://youtube.com/watch?v=abc" in other
@@ -360,13 +414,20 @@ class TestLinkExtraction:
 # Convenience function
 # ────────────────────────────────────────────────────────────
 
+
 class TestConvenience:
     def test_fetch_subreddit_helper(self, tmp_path):
         with patch("src.discovery.sources.reddit.RedditClient") as MockClient:
             instance = MockClient.return_value
             instance.get_subreddit_feed.return_value = [
-                RedditPost(id="1", title="x", author="a", subreddit="r",
-                          link="", published=datetime.now(timezone.utc))
+                RedditPost(
+                    id="1",
+                    title="x",
+                    author="a",
+                    subreddit="r",
+                    link="",
+                    published=datetime.now(UTC),
+                )
             ]
             posts = fetch_subreddit("indieheads")
         assert len(posts) == 1

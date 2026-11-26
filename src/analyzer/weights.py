@@ -8,17 +8,13 @@ The weighting scheme blends three time windows:
 Each artist's position in the top-list within a time-range also contributes
 to its weight (top of the list = stronger signal than 50th place).
 """
+
 from __future__ import annotations
 
-import math
 from collections import defaultdict
-from typing import Optional
 
 from src.analyzer.types import (
-    ArtistRef,
-    TrackRef,
     TimeRangeData,
-    UserProfile,
     TrackFeatures,
 )
 
@@ -115,7 +111,7 @@ def compute_features_centroid(
     features_by_track: dict[str, dict],
     time_ranges: dict[str, TimeRangeData],
     artist_weights: dict[str, float],
-) -> Optional[TrackFeatures]:
+) -> TrackFeatures | None:
     """Compute the audio features centroid, weighted by track's artist.
 
     For each track: weight = its primary artist's weight.
@@ -149,8 +145,16 @@ def compute_features_centroid(
             if w == 0.0:
                 w = 0.01
             feat = features_by_track[track.id]
-            for key in ("tempo", "energy", "valence", "danceability",
-                       "acousticness", "instrumentalness", "speechiness", "liveness"):
+            for key in (
+                "tempo",
+                "energy",
+                "valence",
+                "danceability",
+                "acousticness",
+                "instrumentalness",
+                "speechiness",
+                "liveness",
+            ):
                 val = feat.get(key)
                 if val is None:
                     continue

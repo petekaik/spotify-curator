@@ -1,18 +1,20 @@
 """Unit tests for the playlist builder (FP-5)."""
+
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import MagicMock, patch
 
 from src.discovery.ranking import Candidate
 from src.playlist.builder import (
-    PlaylistBuilder,
     BuiltPlaylist,
+    PlaylistBuilder,
     PlaylistTrack,
 )
-
 
 # ────────────────────────────────────────────────────────────
 # Fixtures
 # ────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def mock_api():
@@ -69,6 +71,7 @@ def sample_ranked(sample_candidates):
 # Search resolution
 # ────────────────────────────────────────────────────────────
 
+
 class TestResolveCandidates:
     def test_uses_existing_spotify_id(self, mock_api, sample_candidates):
         sample_candidates[0].spotify_id = "pre-resolved-id"
@@ -111,6 +114,7 @@ class TestResolveCandidates:
 # Track fetching
 # ────────────────────────────────────────────────────────────
 
+
 class TestFetchTracks:
     def test_fetches_tracks_for_each_artist(self, mock_api, sample_candidates):
         builder = PlaylistBuilder(mock_api[0])
@@ -149,22 +153,25 @@ class TestFetchTracks:
 # Shuffling
 # ────────────────────────────────────────────────────────────
 
+
 class TestShuffle:
     def test_no_two_consecutive_same_artist(self):
         builder = PlaylistBuilder(MagicMock())
         # 3 artists, 2 tracks each
         candidates = [Candidate(name=f"Artist {i}") for i in range(3)]
         tracks = [
-            [{"id": f"a{i}-t{j}", "uri": f"uri:a{i}-t{j}", "name": "x", "album_name": ""}
-             for j in range(2)]
+            [
+                {"id": f"a{i}-t{j}", "uri": f"uri:a{i}-t{j}", "name": "x", "album_name": ""}
+                for j in range(2)
+            ]
             for i in range(3)
         ]
-        artist_tracks = list(zip(candidates, tracks))
+        artist_tracks = list(zip(candidates, tracks, strict=False))
         # Run several times — should never have adjacent same artist
         for _ in range(20):
             shuffled = builder.shuffle_no_adjacent(artist_tracks)
             assert len(shuffled) == 6
-            for i in range(len(shuffled) - 1):
+            for _i in range(len(shuffled) - 1):
                 # We need to map back to artist — but shuffle loses this
                 # So we check via the count of distinct artists
                 pass
@@ -179,10 +186,15 @@ class TestShuffle:
     def test_single_artist(self):
         builder = PlaylistBuilder(MagicMock())
         c = Candidate(name="Solo")
-        artist_tracks = [(c, [
-            {"id": "t1", "uri": "uri:t1", "name": "x", "album_name": ""},
-            {"id": "t2", "uri": "uri:t2", "name": "y", "album_name": ""},
-        ])]
+        artist_tracks = [
+            (
+                c,
+                [
+                    {"id": "t1", "uri": "uri:t1", "name": "x", "album_name": ""},
+                    {"id": "t2", "uri": "uri:t2", "name": "y", "album_name": ""},
+                ],
+            )
+        ]
         result = builder.shuffle_no_adjacent(artist_tracks)
         # We can only have these 2 tracks; they will be adjacent
         assert len(result) == 2
@@ -192,11 +204,13 @@ class TestShuffle:
         builder = PlaylistBuilder(MagicMock())
         candidates = [Candidate(name=f"Artist {i}") for i in range(5)]
         tracks = [
-            [{"id": f"a{i}-t{j}", "uri": f"uri:a{i}-t{j}", "name": "x", "album_name": ""}
-             for j in range(3)]
+            [
+                {"id": f"a{i}-t{j}", "uri": f"uri:a{i}-t{j}", "name": "x", "album_name": ""}
+                for j in range(3)
+            ]
             for i in range(5)
         ]
-        artist_tracks = list(zip(candidates, tracks))
+        artist_tracks = list(zip(candidates, tracks, strict=False))
         result = builder.shuffle_no_adjacent(artist_tracks)
         result_uris = {t["uri"] for t in result}
         expected_uris = {f"uri:a{i}-t{j}" for i in range(5) for j in range(3)}
@@ -206,6 +220,7 @@ class TestShuffle:
 # ────────────────────────────────────────────────────────────
 # Build (in-memory)
 # ────────────────────────────────────────────────────────────
+
 
 class TestBuild:
     def test_build_returns_playlist(self, mock_api, sample_ranked):
@@ -221,7 +236,7 @@ class TestBuild:
         # Should have 3 artists × 1 track (mock returns 1) = 3 tracks
         assert len(pl.tracks) == 3
         assert pl.skipped_no_spotify == 0  # all resolved
-        assert pl.skipped_no_tracks == 0   # all have tracks
+        assert pl.skipped_no_tracks == 0  # all have tracks
 
     def test_default_description(self, mock_api, sample_ranked):
         builder = PlaylistBuilder(mock_api[0])
@@ -231,19 +246,19 @@ class TestBuild:
 
     def test_custom_description(self, mock_api, sample_ranked):
         builder = PlaylistBuilder(mock_api[0])
-        pl = builder.build(
-            sample_ranked, name="Test", description="My custom desc"
-        )
+        pl = builder.build(sample_ranked, name="Test", description="My custom desc")
         assert pl.description == "My custom desc"
 
     def test_counts_skipped_candidates(self, mock_api, sample_ranked):
         # Make 1 candidate unresolvable and 1 with no tracks
         mock_api[0].search_artists.side_effect = lambda name, limit: (
-            {"artists": {"items": []}} if name == "Artist 1"
+            {"artists": {"items": []}}
+            if name == "Artist 1"
             else {"artists": {"items": [{"id": f"id-{name}", "name": name}]}}
         )
         mock_api[0].artist_top_tracks_via_albums.side_effect = lambda sid, **kw: (
-            [] if sid == "id-Artist 2"
+            []
+            if sid == "id-Artist 2"
             else [{"id": "t", "uri": f"spotify:track:t-{sid}", "name": "x", "album_name": "A"}]
         )
         builder = PlaylistBuilder(mock_api[0])
@@ -257,6 +272,7 @@ class TestBuild:
 # ────────────────────────────────────────────────────────────
 # Write to Spotify
 # ────────────────────────────────────────────────────────────
+
 
 class TestWriteToSpotify:
     def test_creates_playlist_and_adds_tracks(self, mock_api):

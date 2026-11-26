@@ -1,4 +1,5 @@
 """Shared runtime config: .env loading and the data directory."""
+
 import os
 from pathlib import Path
 

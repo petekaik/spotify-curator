@@ -17,47 +17,28 @@ Usage from a Hermes session:
 All tools return a JSON-serializable dict. Failures return
 `{"error": "...", "details": "..."}` instead of raising.
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import time
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 log = logging.getLogger(__name__)
+
 
 # Lazy imports to avoid loading the whole package on Hermes startup
 def _import_spotify_curator():
     """Import the spotify-curator modules lazily."""
-    from src.spotify.auth import (
-        get_spotify_client,
-        is_authenticated,
-        get_current_user_id,
-    )
-    from src.spotify.api_v2 import SpotifyAPIv2
-    from src.analyzer.profile import ProfileBuilder
-    from src.analyzer.cache import (
-        profile_exists,
-        profile_age_hours,
-        load_profile,
-        PROFILE_PATH,
-    )
-    from src.discovery.sources.lastfm import LastfmClient
-    from src.discovery.sources.listenbrainz import ListenBrainzClient
-    from src.discovery.ranking import (
-        Candidate,
-        rank_artists,
-        deduplicate_candidates,
-    )
-    from src.playlist.builder import PlaylistBuilder
     return locals()
 
 
 # ────────────────────────────────────────────────────────────
 # Tool 1: status
 # ────────────────────────────────────────────────────────────
+
 
 def spotify_curator_status() -> dict[str, Any]:
     """Check authentication, profile, and configuration status.
@@ -81,6 +62,7 @@ def spotify_curator_status() -> dict[str, Any]:
 
         # Check Last.fm key (env var, no API call)
         import os
+
         lastfm_key = os.getenv("LASTFM_API_KEY", "")
         lastfm_configured = bool(lastfm_key and len(lastfm_key) > 5)
 
@@ -101,6 +83,7 @@ def spotify_curator_status() -> dict[str, Any]:
 # Tool 2: refresh_profile
 # ────────────────────────────────────────────────────────────
 
+
 def spotify_curator_refresh_profile(
     include_audio_features: bool = True,
 ) -> dict[str, Any]:
@@ -119,8 +102,10 @@ def spotify_curator_refresh_profile(
         mods = _import_spotify_curator()
 
         if not mods["is_authenticated"]():
-            return {"error": "not_authenticated",
-                    "details": "Run deploy/scripts/auth_on_host.sh on host Mac first."}
+            return {
+                "error": "not_authenticated",
+                "details": "Run deploy/scripts/auth_on_host.sh on host Mac first.",
+            }
 
         sp = mods["get_spotify_client"]()
         api = mods["SpotifyAPIv2"](sp)
@@ -148,6 +133,7 @@ def spotify_curator_refresh_profile(
 # Tool 3: discover
 # ────────────────────────────────────────────────────────────
 
+
 def spotify_curator_discover(
     tag: str = "indie rock",
     period: str = "6month",
@@ -169,8 +155,10 @@ def spotify_curator_discover(
         mods = _import_spotify_curator()
 
         if not mods["profile_exists"](mods["PROFILE_PATH"]):
-            return {"error": "profile_not_built",
-                    "details": "Call spotify_curator_refresh_profile first."}
+            return {
+                "error": "profile_not_built",
+                "details": "Call spotify_curator_refresh_profile first.",
+            }
 
         profile = mods["load_profile"](mods["PROFILE_PATH"])
         if profile is None:
@@ -178,16 +166,19 @@ def spotify_curator_discover(
 
         lfm = mods["LastfmClient"]()
         if not lfm._api_key:
-            return {"error": "lastfm_not_configured",
-                    "details": "Set LASTFM_API_KEY in .env"}
+            return {"error": "lastfm_not_configured", "details": "Set LASTFM_API_KEY in .env"}
 
         artists = lfm.tag_get_top_artists(tag, period=period, limit=limit)
         if not artists:
-            return {"tag": tag, "period": period, "candidates_count": 0,
-                    "ranked": [], "error": "no_results"}
+            return {
+                "tag": tag,
+                "period": period,
+                "candidates_count": 0,
+                "ranked": [],
+                "error": "no_results",
+            }
 
-        candidates = [mods["Candidate"].from_lastfm(a, source=f"lastfm:tag:{tag}")
-                      for a in artists]
+        candidates = [mods["Candidate"].from_lastfm(a, source=f"lastfm:tag:{tag}") for a in artists]
         candidates = mods["deduplicate_candidates"](candidates)
         ranked = mods["rank_artists"](candidates, profile, limit=limit)
 
@@ -223,7 +214,7 @@ def spotify_curator_generate_mood(
     mood: str,
     n_artists: int = 15,
     tracks_per_artist: int = 2,
-    name: Optional[str] = None,
+    name: str | None = None,
     public: bool = False,
 ) -> dict[str, Any]:
     """Build a single-mood playlist and write to Spotify.
@@ -239,18 +230,21 @@ def spotify_curator_generate_mood(
         dict with playlist URL, name, and stats
     """
     if mood not in VALID_MOODS:
-        return {"error": "invalid_mood",
-                "details": f"mood must be one of {VALID_MOODS}"}
+        return {"error": "invalid_mood", "details": f"mood must be one of {VALID_MOODS}"}
 
     try:
         mods = _import_spotify_curator()
 
         if not mods["is_authenticated"]():
-            return {"error": "not_authenticated",
-                    "details": "Run deploy/scripts/auth_on_host.sh on host Mac first."}
+            return {
+                "error": "not_authenticated",
+                "details": "Run deploy/scripts/auth_on_host.sh on host Mac first.",
+            }
         if not mods["profile_exists"](mods["PROFILE_PATH"]):
-            return {"error": "profile_not_built",
-                    "details": "Call spotify_curator_refresh_profile first."}
+            return {
+                "error": "profile_not_built",
+                "details": "Call spotify_curator_refresh_profile first.",
+            }
 
         profile = mods["load_profile"](mods["PROFILE_PATH"])
 
@@ -267,15 +261,13 @@ def spotify_curator_generate_mood(
 
         lfm = mods["LastfmClient"]()
         if not lfm._api_key:
-            return {"error": "lastfm_not_configured",
-                    "details": "Set LASTFM_API_KEY in .env"}
+            return {"error": "lastfm_not_configured", "details": "Set LASTFM_API_KEY in .env"}
 
         artists = lfm.tag_get_top_artists(tag, period="6month", limit=n_artists * 2)
         if not artists:
             return {"error": "no_artists_found", "details": f"No artists for tag {tag}"}
 
-        candidates = [mods["Candidate"].from_lastfm(a, source=f"lastfm:tag:{tag}")
-                      for a in artists]
+        candidates = [mods["Candidate"].from_lastfm(a, source=f"lastfm:tag:{tag}") for a in artists]
         candidates = mods["deduplicate_candidates"](candidates)
         ranked = mods["rank_artists"](candidates, profile, limit=n_artists)
 
@@ -288,7 +280,9 @@ def spotify_curator_generate_mood(
             name = f"Weekly {mood.capitalize()} — {week}"
 
         playlist = builder.build(
-            ranked, name=name, description=f"Auto-generated by spotify-curator (mood: {mood})",
+            ranked,
+            name=name,
+            description=f"Auto-generated by spotify-curator (mood: {mood})",
             tracks_per_artist=tracks_per_artist,
         )
         playlist = builder.write_to_spotify(playlist, public=public)
@@ -300,7 +294,7 @@ def spotify_curator_generate_mood(
             "playlist_name": playlist.name,
             "artists_count": playlist.total_artist_count,
             "tracks_count": len(playlist.tracks),
-            "artists": [cand.name for cand, _, _ in ranked[:playlist.total_artist_count]],
+            "artists": [cand.name for cand, _, _ in ranked[: playlist.total_artist_count]],
             "summary": (
                 f"{playlist.total_artist_count} emerging artists across "
                 f"{tag} and related tags. "
@@ -316,6 +310,7 @@ def spotify_curator_generate_mood(
 # ────────────────────────────────────────────────────────────
 # Tool 5: generate_weekly
 # ────────────────────────────────────────────────────────────
+
 
 def spotify_curator_generate_weekly(
     n_artists_per_mood: int = 15,
@@ -353,12 +348,14 @@ def spotify_curator_generate_weekly(
             if "error" in r:
                 log.warning(f"Mood {mood} failed: {r['error']}")
                 continue
-            playlists.append({
-                "mood": mood,
-                "url": r["playlist_url"],
-                "name": r["playlist_name"],
-                "tracks": r["tracks_count"],
-            })
+            playlists.append(
+                {
+                    "mood": mood,
+                    "url": r["playlist_url"],
+                    "name": r["playlist_name"],
+                    "tracks": r["tracks_count"],
+                }
+            )
             total_artists += r["artists_count"]
             total_tracks += r["tracks_count"]
 
@@ -378,9 +375,10 @@ def spotify_curator_generate_weekly(
 # Tool 6: get_reports
 # ────────────────────────────────────────────────────────────
 
+
 def spotify_curator_get_reports(
     limit: int = 10,
-    mood_filter: Optional[str] = None,
+    mood_filter: str | None = None,
 ) -> dict[str, Any]:
     """List past weekly runs and their Spotify playlist URLs.
 
@@ -398,9 +396,13 @@ def spotify_curator_get_reports(
     """
     try:
         from src.config import DATA_DIR
+
         reports_dir = DATA_DIR / "reports"
         if not reports_dir.exists():
-            return {"runs": [], "details": "No reports directory yet. Reports are saved by the daemon (FP-9)."}
+            return {
+                "runs": [],
+                "details": "No reports directory yet. Reports are saved by the daemon (FP-9).",
+            }
 
         runs = []
         for run_dir in sorted(reports_dir.iterdir(), reverse=True)[:limit]:
@@ -411,13 +413,17 @@ def spotify_curator_get_reports(
                 continue
             try:
                 meta = json.loads(meta_file.read_text())
-                if mood_filter and not any(p.get("mood") == mood_filter for p in meta.get("playlists", [])):
+                if mood_filter and not any(
+                    p.get("mood") == mood_filter for p in meta.get("playlists", [])
+                ):
                     continue
-                runs.append({
-                    "id": run_dir.name,
-                    "generated_at": meta.get("generated_at"),
-                    "playlists": meta.get("playlists", []),
-                })
+                runs.append(
+                    {
+                        "id": run_dir.name,
+                        "generated_at": meta.get("generated_at"),
+                        "playlists": meta.get("playlists", []),
+                    }
+                )
             except (json.JSONDecodeError, OSError):
                 continue
         return {"runs": runs}
@@ -492,8 +498,16 @@ TOOL_REGISTRY = {
                         "description": "Target mood for the playlist.",
                     },
                     "n_artists": {"type": "integer", "default": 15, "minimum": 1, "maximum": 50},
-                    "tracks_per_artist": {"type": "integer", "default": 2, "minimum": 1, "maximum": 5},
-                    "name": {"type": "string", "description": "Override auto-generated playlist name."},
+                    "tracks_per_artist": {
+                        "type": "integer",
+                        "default": 2,
+                        "minimum": 1,
+                        "maximum": 5,
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Override auto-generated playlist name.",
+                    },
                     "public": {"type": "boolean", "default": False},
                 },
                 "required": ["mood"],
@@ -508,8 +522,18 @@ TOOL_REGISTRY = {
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "n_artists_per_mood": {"type": "integer", "default": 15, "minimum": 1, "maximum": 50},
-                    "tracks_per_artist": {"type": "integer", "default": 2, "minimum": 1, "maximum": 5},
+                    "n_artists_per_mood": {
+                        "type": "integer",
+                        "default": 15,
+                        "minimum": 1,
+                        "maximum": 50,
+                    },
+                    "tracks_per_artist": {
+                        "type": "integer",
+                        "default": 2,
+                        "minimum": 1,
+                        "maximum": 5,
+                    },
                     "public": {"type": "boolean", "default": False},
                     "refresh_profile_first": {"type": "boolean", "default": False},
                 },
@@ -526,7 +550,10 @@ TOOL_REGISTRY = {
                 "type": "object",
                 "properties": {
                     "limit": {"type": "integer", "default": 10, "minimum": 1, "maximum": 100},
-                    "mood_filter": {"type": "string", "description": "Only return runs containing this mood."},
+                    "mood_filter": {
+                        "type": "string",
+                        "description": "Only return runs containing this mood.",
+                    },
                 },
                 "required": [],
             },

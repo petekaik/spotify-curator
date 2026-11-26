@@ -1,27 +1,29 @@
 """Unit tests for the ranking algorithm (FP-4)."""
-import pytest
+
 from datetime import datetime
 
-from src.analyzer.types import UserProfile, TrackFeatures
-from src.discovery.sources.lastfm import LastfmArtist
+import pytest
+
+from src.analyzer.types import TrackFeatures, UserProfile
 from src.discovery.ranking import (
     Candidate,
     TuningConfig,
-    genre_match_score,
+    deduplicate_candidates,
+    discovery_bonus_score,
     emerging_signal_score,
     feature_match_score,
-    discovery_bonus_score,
-    mainstream_penalty,
+    genre_match_score,
     geo_bonus_score,
-    score_artist,
+    mainstream_penalty,
     rank_artists,
-    deduplicate_candidates,
+    score_artist,
 )
-
+from src.discovery.sources.lastfm import LastfmArtist
 
 # ────────────────────────────────────────────────────────────
 # Fixtures
 # ────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def profile():
@@ -40,9 +42,14 @@ def profile():
         },
         artist_weights={"phoebe bridgers": 0.5, "big thief": 0.3, "radiohead": 0.2},
         features_centroid=TrackFeatures(
-            tempo=110.0, energy=0.6, valence=0.5,
-            danceability=0.4, acousticness=0.6, instrumentalness=0.2,
-            speechiness=0.05, liveness=0.2,
+            tempo=110.0,
+            energy=0.6,
+            valence=0.5,
+            danceability=0.4,
+            acousticness=0.6,
+            instrumentalness=0.2,
+            speechiness=0.05,
+            liveness=0.2,
         ),
     )
 
@@ -92,6 +99,7 @@ def candidate_mainstream():
 # ────────────────────────────────────────────────────────────
 # Component tests
 # ────────────────────────────────────────────────────────────
+
 
 class TestGenreMatch:
     def test_perfect_genre_overlap(self, profile):
@@ -159,9 +167,14 @@ class TestFeatureMatch:
         # Profile centroid: tempo=110, energy=0.6 etc.
         # Opposite: max tempo, min everything else
         opposite = TrackFeatures(
-            tempo=250.0, energy=0.0, valence=0.0,
-            danceability=0.0, acousticness=0.0, instrumentalness=0.0,
-            speechiness=0.0, liveness=0.0,
+            tempo=250.0,
+            energy=0.0,
+            valence=0.0,
+            danceability=0.0,
+            acousticness=0.0,
+            instrumentalness=0.0,
+            speechiness=0.0,
+            liveness=0.0,
         )
         score = feature_match_score(opposite, profile.features_centroid)
         # Should be noticeably less than the centroid match (1.0)
@@ -169,9 +182,14 @@ class TestFeatureMatch:
         assert score < 0.7, f"opposite features should give low score, got {score}"
         # And clearly worse than a close match
         close = TrackFeatures(
-            tempo=120.0, energy=0.55, valence=0.45,
-            danceability=0.35, acousticness=0.55, instrumentalness=0.25,
-            speechiness=0.04, liveness=0.25,
+            tempo=120.0,
+            energy=0.55,
+            valence=0.45,
+            danceability=0.35,
+            acousticness=0.55,
+            instrumentalness=0.25,
+            speechiness=0.04,
+            liveness=0.25,
         )
         close_score = feature_match_score(close, profile.features_centroid)
         assert score < close_score
@@ -221,7 +239,7 @@ class TestGeoBonus:
     def test_match(self):
         c = Candidate(name="X", lastfm_tags=["Finnish", "Helsinki"])
         score = geo_bonus_score(c, ["finnish"])
-        assert score == pytest.approx(1/3, abs=0.01)
+        assert score == pytest.approx(1 / 3, abs=0.01)
 
     def test_multiple_matches_cap(self):
         c = Candidate(name="X", lastfm_tags=["finnish", "helsinki", "nordic", "suomi"])
@@ -238,6 +256,7 @@ class TestGeoBonus:
 # End-to-end scoring
 # ────────────────────────────────────────────────────────────
 
+
 class TestScoreArtist:
     def test_indie_artist_outscores_mainstream(
         self, profile, candidate_matching_genres, candidate_mainstream
@@ -253,17 +272,19 @@ class TestScoreArtist:
         score_wrong, _ = score_artist(candidate_wrong_genres, profile)
         assert score_match > score_wrong
 
-    def test_breakdown_has_all_components(
-        self, profile, candidate_matching_genres
-    ):
+    def test_breakdown_has_all_components(self, profile, candidate_matching_genres):
         _, components = score_artist(candidate_matching_genres, profile)
-        expected = {"genre_match", "emerging_signal", "feature_match",
-                    "discovery_bonus", "geo_bonus", "mainstream_penalty"}
+        expected = {
+            "genre_match",
+            "emerging_signal",
+            "feature_match",
+            "discovery_bonus",
+            "geo_bonus",
+            "mainstream_penalty",
+        }
         assert set(components.keys()) == expected
 
-    def test_score_is_sum_of_components(
-        self, profile, candidate_matching_genres
-    ):
+    def test_score_is_sum_of_components(self, profile, candidate_matching_genres):
         total, components = score_artist(candidate_matching_genres, profile)
         assert total == pytest.approx(sum(components.values()), abs=0.001)
 

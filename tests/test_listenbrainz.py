@@ -2,8 +2,8 @@
 
 Uses mocked HTTP responses to verify request shape and parsing.
 """
-import pytest
-from unittest.mock import patch, MagicMock
+
+from unittest.mock import MagicMock, patch
 
 from src.discovery.sources.listenbrainz import (
     ListenBrainzClient,
@@ -11,21 +11,19 @@ from src.discovery.sources.listenbrainz import (
     find_similar_to_artists,
 )
 
-
 SAMPLE_SIMILAR_RESPONSE = [
     {"name": "Radiohead", "mbid": "mbid-radiohead", "score": 0.95},
     {"name": "Muse", "mbid": "mbid-muse", "score": 0.78},
     {"name": "Coldplay", "mbid": "mbid-coldplay", "score": 0.42},
 ]
 
-SAMPLE_SIMILAR_DICT_RESPONSE = {
-    "similar_artists": SAMPLE_SIMILAR_RESPONSE
-}
+SAMPLE_SIMILAR_DICT_RESPONSE = {"similar_artists": SAMPLE_SIMILAR_RESPONSE}
 
 
 # ────────────────────────────────────────────────────────────
 # Tests
 # ────────────────────────────────────────────────────────────
+
 
 class TestListenBrainzParsing:
     def test_parse_list_response(self, tmp_path):
@@ -49,11 +47,15 @@ class TestListenBrainzParsing:
 
     def test_filters_empty_mbid_or_name(self, tmp_path):
         client = ListenBrainzClient(cache_dir=tmp_path)
-        with patch.object(client, "_post", return_value=[
-            {"name": "Good", "mbid": "x", "score": 0.5},
-            {"name": "", "mbid": "y", "score": 0.3},     # no name
-            {"name": "NoMbid", "mbid": "", "score": 0.2}, # no mbid
-        ]):
+        with patch.object(
+            client,
+            "_post",
+            return_value=[
+                {"name": "Good", "mbid": "x", "score": 0.5},
+                {"name": "", "mbid": "y", "score": 0.3},  # no name
+                {"name": "NoMbid", "mbid": "", "score": 0.2},  # no mbid
+            ],
+        ):
             result = client.get_similar_artists(["seed"])
         assert len(result) == 1
         assert result[0].name == "Good"
@@ -109,9 +111,11 @@ class TestListenBrainzAlgorithm:
     def test_falls_back_to_default_on_400(self, tmp_path):
         """If custom algorithm returns 400, fall back to default."""
         import requests as req
+
         client = ListenBrainzClient(cache_dir=tmp_path)
 
         call_count = 0
+
         def fake_post(endpoint, body):
             nonlocal call_count
             call_count += 1
@@ -121,8 +125,10 @@ class TestListenBrainzAlgorithm:
                 raise err
             return SAMPLE_SIMILAR_RESPONSE
 
-        with patch.object(client, "_post", side_effect=fake_post), \
-             patch.object(client, "_throttle"):
+        with (
+            patch.object(client, "_post", side_effect=fake_post),
+            patch.object(client, "_throttle"),
+        ):
             result = client.get_similar_artists(["x"], algorithm="recording_ref_link")
         assert call_count == 2  # first failed, then fallback succeeded
         assert len(result) == 3
@@ -136,14 +142,18 @@ class TestListenBrainzCaching:
             cache_ttl_seconds=3600,
         )
         call_count = 0
+
         def fake_post(endpoint, body):
             nonlocal call_count
             call_count += 1
             return SAMPLE_SIMILAR_RESPONSE
+
         # Patch the underlying _post to count calls
         # Bypass throttle entirely with patch
-        with patch.object(client, "_post", side_effect=fake_post), \
-             patch.object(client, "_throttle"):
+        with (
+            patch.object(client, "_post", side_effect=fake_post),
+            patch.object(client, "_throttle"),
+        ):
             client.get_similar_artists(["x"])
             client.get_similar_artists(["x"])
         # The second call must be served from cache, not from fake_post
@@ -152,7 +162,9 @@ class TestListenBrainzCaching:
         # we bypass the cache. The real implementation uses _post body to derive cache key.
         # So we need to test caching via real _post, but throttle makes that slow.
         # Alternative: test cache_hit directly with _get_cached.
-        cached = client._get_cached("POST /similar-artists/session_based_days_7500_session_300m {\"mbids\": [\"x\"]}")
+        client._get_cached(
+            'POST /similar-artists/session_based_days_7500_session_300m {"mbids": ["x"]}'
+        )
         # May be None if first call's key format doesn't match — but in this implementation
         # the cache key is computed inside _post. So we verify by call count.
         # With this implementation, fake_post IS the cache. So count = 2.
@@ -166,7 +178,7 @@ class TestListenBrainzCaching:
             cache_ttl_seconds=3600,
         )
         # Save to cache directly
-        cache_key = "POST /similar-artists/test {\"mbids\": [\"x\"]}"
+        cache_key = 'POST /similar-artists/test {"mbids": ["x"]}'
         client._save_cache(cache_key, SAMPLE_SIMILAR_RESPONSE)
 
         # Read from cache
@@ -182,6 +194,7 @@ class TestListenBrainzCaching:
         cache_key = "test"
         client._save_cache(cache_key, {"data": "value"})
         import time
+
         time.sleep(0.01)
         assert client._get_cached(cache_key) is None
 
@@ -189,19 +202,23 @@ class TestListenBrainzCaching:
 class TestFreshReleases:
     def test_fresh_releases_basic(self, tmp_path):
         client = ListenBrainzClient(cache_dir=tmp_path)
-        with patch.object(client, "_get", return_value={
-            "payload": {
-                "releases": [
-                    {
-                        "release_name": "Album X",
-                        "artist_name": "Artist Y",
-                        "artist_mbid": "mbid-y",
-                        "release_date": "2026-07-01",
-                        "release_mbid": "mbid-x",
-                    }
-                ]
-            }
-        }) as mock:
+        with patch.object(
+            client,
+            "_get",
+            return_value={
+                "payload": {
+                    "releases": [
+                        {
+                            "release_name": "Album X",
+                            "artist_name": "Artist Y",
+                            "artist_mbid": "mbid-y",
+                            "release_date": "2026-07-01",
+                            "release_mbid": "mbid-x",
+                        }
+                    ]
+                }
+            },
+        ) as mock:
             releases = client.get_fresh_releases(days=30)
         assert len(releases) == 1
         assert releases[0]["artist_name"] == "Artist Y"

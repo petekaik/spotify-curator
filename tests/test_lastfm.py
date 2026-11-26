@@ -3,16 +3,16 @@
 Tests use vcrpy cassettes to record/replay real Last.fm API responses,
 so we don't need a live API key for tests to pass.
 """
-import json
+
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from src.discovery.sources.lastfm import (
-    LastfmClient,
     LastfmArtist,
+    LastfmClient,
     get_top_artists_for_tag,
 )
-
 
 # ────────────────────────────────────────────────────────────
 # Mocked API responses (synthetic, no network needed)
@@ -47,18 +47,22 @@ SAMPLE_ARTIST_INFO_RESPONSE = {
         "mbid": "8a4b7b5e-9c1a-4d2e-b3a1-1234567890ab",
         "url": "https://www.last.fm/music/Phoebe+Bridgers",
         "stats": {"listeners": "1500000", "playcount": "25000000"},
-        "tags": {"tag": [
-            {"name": "indie", "url": "x"},
-            {"name": "sad girl", "url": "x"},
-        ]},
+        "tags": {
+            "tag": [
+                {"name": "indie", "url": "x"},
+                {"name": "sad girl", "url": "x"},
+            ]
+        },
         "bio": {
             "summary": "Phoebe Bridgers is an American singer-songwriter.",
             "content": "Full bio here...",
         },
-        "similar": {"artist": [
-            {"name": "Julien Baker", "url": "x"},
-            {"name": "Lucy Dacus", "url": "x"},
-        ]},
+        "similar": {
+            "artist": [
+                {"name": "Julien Baker", "url": "x"},
+                {"name": "Lucy Dacus", "url": "x"},
+            ]
+        },
     }
 }
 
@@ -67,16 +71,20 @@ SAMPLE_ARTIST_INFO_RESPONSE = {
 # Tests
 # ────────────────────────────────────────────────────────────
 
+
 class TestLastfmParsing:
     def test_parse_artist_minimal(self):
         from src.discovery.sources.lastfm import LastfmClient
+
         client = LastfmClient(api_key="fake_key_for_test")
-        parsed = client._parse_artist({
-            "name": "Test Artist",
-            "mbid": "abc-123",
-            "stats": {"listeners": "1000", "playcount": "5000"},
-            "tags": {"tag": [{"name": "indie"}, {"name": "rock"}]},
-        })
+        parsed = client._parse_artist(
+            {
+                "name": "Test Artist",
+                "mbid": "abc-123",
+                "stats": {"listeners": "1000", "playcount": "5000"},
+                "tags": {"tag": [{"name": "indie"}, {"name": "rock"}]},
+            }
+        )
         assert parsed.name == "Test Artist"
         assert parsed.mbid == "abc-123"
         assert parsed.listeners == 1000
@@ -175,6 +183,7 @@ class TestLastfmCaching:
     def test_cache_expires(self, tmp_path):
         """Old cache should be ignored."""
         import time
+
         client = LastfmClient(
             api_key="fake",
             cache_dir=tmp_path,
@@ -199,7 +208,9 @@ class TestConvenience:
         assert len(result) == 1
         assert result[0].name == "A1"
         instance.tag_get_top_artists.assert_called_once_with(
-            "indie rock", period="6month", limit=30,
+            "indie rock",
+            period="6month",
+            limit=30,
         )
 
 
