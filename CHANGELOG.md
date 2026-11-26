@@ -6,9 +6,20 @@ matching section below as a GitHub release.
 
 ## [Unreleased]
 
+### Added
+- Ranker evaluation harness (`python -m evals.harness`): runs the real ranker on a frozen snapshot
+  of real Last.fm data, gates four quality metrics against a committed baseline, checks that the
+  tuning knobs do what they claim, and writes [evals/REPORT.md](evals/REPORT.md). Runs in CI.
+  First findings: 12 of the top 15 are artists the listener already knows, and a geo tag does not
+  move the ranking.
+
 ### Changed
 - Claude runs only on `@claude` mentions (no automatic review on every PR push) and uses Haiku,
   to keep Claude usage down.
+
+### Fixed
+- Daemon `send_command` gave up on a response file it saw before the daemon finished writing
+  it, which failed CI on Python 3.13. It now keeps waiting until the timeout.
 
 ## [0.3.0] - 2026-11-26
 

@@ -264,7 +264,7 @@ def send_command(
             try:
                 return json.loads(response_path.read_text())
             except (json.JSONDecodeError, OSError):
-                return None
+                pass  # half-written by the daemon: keep waiting until timeout
         time.sleep(0.1)
     return None
 
