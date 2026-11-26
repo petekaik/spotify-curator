@@ -6,6 +6,8 @@ matching section below as a GitHub release.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-26
+
 ### Added
 - MCP server (`spotify-curator-mcp`): the agent tools for Claude, Codex, OpenClaw, Hermes and any
   MCP client, over stdio or streamable HTTP with bearer-token auth; `mcp` service in
@@ -59,6 +61,7 @@ matching section below as a GitHub release.
 - Playlist builder with no two consecutive tracks by the same artist (FP-5).
 - Typer CLI: `auth`, `status`, `profile`, `discover`, `playlist` (FP-6).
 
-[Unreleased]: https://github.com/petekaik/spotify-curator/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/petekaik/spotify-curator/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/petekaik/spotify-curator/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/petekaik/spotify-curator/releases/tag/v0.2.0
 [0.1.0]: https://github.com/petekaik/spotify-curator/tree/fb0286b
