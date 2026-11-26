@@ -4,11 +4,19 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spotify-curator"
-version = "0.1.0"
-description = "Find emerging artists and build Spotify playlists, without the popularity-bubble effect"
+version = "0.2.0"
+description = "Finds small and emerging artists that match your Spotify taste and builds playlists from them"
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.11"
+requires-python = ">=3.12"
+authors = [{ name = "Petteri Kaikkonen" }]
+keywords = ["spotify", "music-discovery", "playlist", "last-fm", "llm-agent"]
+classifiers = [
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Multimedia :: Sound/Audio",
+]
 dependencies = [
     "spotipy>=2.25.0",
     "requests>=2.31.0",
@@ -28,7 +36,14 @@ dev = [
     "pytest-asyncio>=0.24.0",
     "pytest-mock>=3.14.0",
     "vcrpy>=6.0.0",
+    "pytest-cov>=6.0.0",
+    "pre-commit>=4.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/petekaik/spotify-curator"
+Changelog = "https://github.com/petekaik/spotify-curator/blob/main/CHANGELOG.md"
+Portfolio = "https://gitpages.morgeweb.com/"
 
 [project.scripts]
 spotify-curator = "src.cli.main:main"
@@ -38,7 +53,7 @@ include = ["src*"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM"]
@@ -55,5 +70,6 @@ asyncio_default_fixture_loop_scope = "function"
 source = ["src"]
 
 [tool.coverage.report]
+fail_under = 80  # measured 84% on 2026-11-26; raise as tests grow
 show_missing = false
 skip_covered = true

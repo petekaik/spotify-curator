@@ -102,16 +102,16 @@ Parquet file at `~/.spotify-curator/profile.parquet`:
 class UserProfile:
     user_id: str
     updated_at: datetime
-    genre_weights: dict[str, float]      # normalized 0-1
-    artist_weights: dict[str, float]     # artist_id → weight
-    top_artists_short: list[ArtistRef]   # 50 entries
+    genre_weights: dict[str, float]  # normalized 0-1
+    artist_weights: dict[str, float]  # artist_id → weight
+    top_artists_short: list[ArtistRef]  # 50 entries
     top_artists_medium: list[ArtistRef]
     top_artists_long: list[ArtistRef]
     top_tracks_short: list[TrackRef]
     top_tracks_medium: list[TrackRef]
     top_tracks_long: list[TrackRef]
     saved_album_ids: list[str]
-    track_features_centroid: dict        # avg tempo, energy, valence, etc.
+    track_features_centroid: dict  # avg tempo, energy, valence, etc.
 ```
 
 ### Weighting scheme

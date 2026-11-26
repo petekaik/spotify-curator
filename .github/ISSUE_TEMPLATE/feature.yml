@@ -1,0 +1,52 @@
+name: Feature (FP)
+description: Propose a backlog item. It gets a WSJF score and goes into docs/FP_PLAN.md.
+title: "FP-?: "
+labels: [feature]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Features are ranked by **WSJF = Business Value / Time-to-Complete** (both Fibonacci 1–13).
+        Acceptance criteria become the tests, so write them so a test can check them.
+  - type: textarea
+    id: story
+    attributes:
+      label: User story
+      placeholder: As a listener, I want …, so that …
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: One checkable statement per line.
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Spotify, Analyzer, Discovery, Playlist, CLI, Daemon, Hermes skill, Infra, Docs]
+    validations:
+      required: true
+  - type: dropdown
+    id: bv
+    attributes:
+      label: Business value (BV)
+      options: ["1", "2", "3", "5", "8", "13"]
+    validations:
+      required: true
+  - type: dropdown
+    id: tc
+    attributes:
+      label: Time to complete (TC)
+      options: ["1", "2", "3", "5", "8", "13"]
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Design notes, APIs, risks

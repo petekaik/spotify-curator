@@ -1,6 +1,6 @@
 """Spotify API authentication wrapper.
 
-Handles OAuth Authorization Code Flow with PKCE for Spotify Web API.
+Handles the OAuth authorization-code flow for the Spotify Web API.
 Uses spotipy under the hood but provides a clean interface and proper
 token caching that survives restarts.
 
