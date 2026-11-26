@@ -20,6 +20,8 @@ matching section below as a GitHub release.
 ### Fixed
 - Daemon `send_command` gave up on a response file it saw before the daemon finished writing
   it, which failed CI on Python 3.13. It now keeps waiting until the timeout.
+- Playlists use each artist's best-known songs (Last.fm play counts, matched on Spotify by artist
+  ID) instead of the first tracks of their newest release. Spotify no longer reports popularity.
 
 ## [0.3.0] - 2026-11-26
 

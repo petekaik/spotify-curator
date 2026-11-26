@@ -345,3 +345,41 @@ class TestWriteToSpotify:
         )
         with pytest.raises(RuntimeError, match="no ID"):
             builder.write_to_spotify(pl)
+
+
+class TestTrackChoiceByLastfm:
+    """Spotify has no popularity any more; Last.fm play counts pick the tracks."""
+
+    @staticmethod
+    def _hit(name, artist_id="sid"):
+        return {
+            "id": name,
+            "name": name,
+            "uri": f"spotify:track:{name}",
+            "artists": [{"id": artist_id}],
+        }
+
+    def test_searches_lastfm_top_tracks_by_artist_id(self, mock_api):
+        api, sp = mock_api
+        results = {
+            "Breadcrumb Trail": [
+                self._hit("Breadcrumb Trail", "other"),
+                self._hit("Breadcrumb Trail (Live)"),
+                self._hit("Breadcrumb Trail"),
+            ],
+            "Nosferatu Man": [self._hit("Nosferatu Man - Remastered")],
+        }
+        sp._get.side_effect = lambda *a, q, **kw: {"tracks": {"items": results[q.split('"')[1]]}}
+        builder = PlaylistBuilder(
+            api, min_request_interval=0, top_tracks=lambda a: ["Breadcrumb Trail", "Nosferatu Man"]
+        )
+        [(_, tracks)] = builder.fetch_tracks_for_artists([(Candidate(name="Slint"), "sid")], 2)
+        assert [t["name"] for t in tracks] == ["Breadcrumb Trail", "Nosferatu Man - Remastered"]
+        api.artist_top_tracks_via_albums.assert_not_called()
+
+    def test_fills_from_albums_when_lastfm_has_too_few(self, mock_api):
+        api, sp = mock_api
+        sp._get.return_value = {"tracks": {"items": []}}
+        builder = PlaylistBuilder(api, min_request_interval=0, top_tracks=lambda a: ["Gone"])
+        [(_, tracks)] = builder.fetch_tracks_for_artists([(Candidate(name="X"), "sid")], 2)
+        assert [t["name"] for t in tracks] == ["Hit Song"]
