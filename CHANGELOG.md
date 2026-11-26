@@ -6,15 +6,7 @@ matching section below as a GitHub release.
 
 ## [Unreleased]
 
-## [0.3.0] - 2026-11-26
-
 ### Added
-- MCP server (`spotify-curator-mcp`): the agent tools for Claude, Codex, OpenClaw, Hermes and any
-  MCP client, over stdio or streamable HTTP with bearer-token auth; `mcp` service in
-  `deploy/compose.yml`.
-- Persistent ranking tuning (`$SPOTIFY_CURATOR_HOME/tuning.json`) with `get_tuning` /
-  `update_tuning` tools; mood seed tags and preferred geo tags are tunable.
-- `dry_run` for mood playlists.
 - Ranker evaluation harness (`python -m evals.harness`): runs the real ranker on a frozen snapshot
   of real Last.fm data, gates four quality metrics against a committed baseline, checks that the
   tuning knobs do what they claim, and writes [evals/REPORT.md](evals/REPORT.md). Runs in CI.
@@ -24,6 +16,18 @@ matching section below as a GitHub release.
 ### Fixed
 - Daemon `send_command` gave up on a response file it saw before the daemon finished writing
   it, which failed CI on Python 3.13. It now keeps waiting until the timeout.
+
+## [0.3.0] - 2026-11-26
+
+### Added
+- MCP server (`spotify-curator-mcp`): the agent tools for Claude, Codex, OpenClaw, Hermes and any
+  MCP client, over stdio or streamable HTTP with bearer-token auth; `mcp` service in
+  `deploy/compose.yml`.
+- Persistent ranking tuning (`$SPOTIFY_CURATOR_HOME/tuning.json`) with `get_tuning` /
+  `update_tuning` tools; mood seed tags and preferred geo tags are tunable.
+- `dry_run` for mood playlists.
+
+### Fixed
 - Hermes tools failed at runtime: a lint autofix had removed their lazy imports. A test now guards it.
 
 ## [0.2.0] - 2026-11-26
