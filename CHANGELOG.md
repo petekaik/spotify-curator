@@ -6,6 +6,10 @@ matching section below as a GitHub release.
 
 ## [Unreleased]
 
+### Changed
+- Claude runs only on `@claude` mentions (no automatic review on every PR push) and uses Haiku,
+  to keep Claude usage down.
+
 ## [0.3.0] - 2026-11-26
 
 ### Added

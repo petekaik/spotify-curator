@@ -134,7 +134,7 @@ tests, took one day (2026-07-08).
 flowchart LR
     I["Issue<br/>(Feature form:<br/>story, criteria, WSJF)"] --> B[Ranked backlog<br/>docs/FP_PLAN.md]
     B --> D["Agent builds it<br/>test first, per CLAUDE.md"]
-    D --> PR[Pull request<br/>template + Claude review]
+    D --> PR[Pull request<br/>template + @claude review]
     PR --> G{CI gates}
     G -->|pass| M[main]
     M --> RL[Tag vX.Y.Z →<br/>GitHub release<br/>from CHANGELOG]
@@ -147,7 +147,7 @@ flowchart LR
 | **Design** | [Architecture](docs/ARCHITECTURE.md), design notes per FP; agent rules in [CLAUDE.md](CLAUDE.md) |
 | **Development** | Test first; tests never call real APIs (mocks and [vcrpy](https://vcrpy.readthedocs.io) cassettes); `pre-commit` runs ruff and a secret scan |
 | **QA** | [CI](.github/workflows/ci.yml): ruff lint and format, 246 tests on Python 3.12 and 3.13, coverage gate 80% (84% today), live end-to-end check before release |
-| **Review** | [PR template](.github/PULL_REQUEST_TEMPLATE.md) records what the agent did and what a human decided; [Claude Code review](.github/workflows/claude.yml) on every PR, and `@claude` in an issue to delegate work |
+| **Review** | [PR template](.github/PULL_REQUEST_TEMPLATE.md) records what the agent did and what a human decided; [Claude Code](.github/workflows/claude.yml) on demand: `@claude review` on a PR, or `@claude` in an issue to delegate work (Haiku, to keep usage low) |
 | **Security** | [CodeQL](.github/workflows/codeql.yml) weekly and on PRs, [Dependabot](.github/dependabot.yml) for pip, Actions and the Docker base image, no secrets in git |
 | **Ops** | Docker image built and smoke-tested in CI; headless OAuth via a host-side script; config through one module ([src/config.py](src/config.py)) |
 | **Release** | [Keep a Changelog](CHANGELOG.md); pushing a `vX.Y.Z` tag publishes the notes as a [GitHub release](.github/workflows/release.yml) |
