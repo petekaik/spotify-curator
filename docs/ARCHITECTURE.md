@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-08
 **Version:** v0.1.0
-**Status:** FP-0/FP-1/FP-1b/FP-2 complete, FP-3 in progress
+**Status:** Written for v0.1.0. Current feature status lives in the [README](../README.md#status) and [FP_PLAN](FP_PLAN.md).
 
 ## 1. Context
 

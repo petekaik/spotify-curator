@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="550" viewBox="0 0 1280 550" role="img" aria-labelledby="t d">
+<title id="t">spotify-curator</title><desc id="d">A departure-board style ranking: small artists such as Slomosa (67,078 Last.fm listeners) rank above Queens of the Stone Age (3.9 million).</desc>
+<rect width="1280" height="550" rx="8" fill="#060d1a"/>
+<g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+<circle cx="66" cy="52" r="6" fill="#f7b828"><animate attributeName="opacity" values="1;.25;1" dur="2s" repeatCount="indefinite"/></circle>
+<text x="82" y="57" font-size="15" letter-spacing="2" fill="#98a6b8">NOW CURATING · TAG: STONER ROCK</text>
+<text x="60" y="118" font-size="58" font-weight="700" fill="#f7b828">spotify-curator</text>
+<text x="60" y="158" font-size="21" fill="#ebe4d6">Small and emerging artists that fit your taste, not the ones Spotify already pushes.</text>
+<line x1="60" y1="186" x2="1220" y2="186" stroke="#2e3948" stroke-width="2"/>
+<g font-size="14" letter-spacing="2" fill="#98a6b8"><text x="60" y="215">NO</text><text x="130" y="215">ARTIST</text><text x="760" y="215" text-anchor="end">LISTENERS</text><text x="820" y="215">FIT</text></g>
+<text x="60" y="252" font-size="22" fill="#f7b828">01</text>
+<text x="130" y="252" font-size="22" fill="#ebe4d6">Slomosa</text>
+<text x="760" y="252" font-size="22" fill="#ebe4d6" text-anchor="end">67,078</text>
+<rect x="820" y="236" width="300" height="16" fill="#2e3948"/><rect x="820" y="236" width="266" height="16" fill="#f7b828"/>
+<text x="1220" y="252" font-size="20" fill="#ebe4d6" text-anchor="end">0.355</text>
+<text x="60" y="288" font-size="22" fill="#f7b828">02</text>
+<text x="130" y="288" font-size="22" fill="#ebe4d6">Fu Manchu</text>
+<text x="760" y="288" font-size="22" fill="#ebe4d6" text-anchor="end">440,315</text>
+<rect x="820" y="272" width="300" height="16" fill="#2e3948"/><rect x="820" y="272" width="255" height="16" fill="#f7b828"/>
+<text x="1220" y="288" font-size="20" fill="#ebe4d6" text-anchor="end">0.340</text>
+<text x="60" y="324" font-size="22" fill="#f7b828">03</text>
+<text x="130" y="324" font-size="22" fill="#ebe4d6">Monster Magnet</text>
+<text x="760" y="324" font-size="22" fill="#ebe4d6" text-anchor="end">526,069</text>
+<rect x="820" y="308" width="300" height="16" fill="#2e3948"/><rect x="820" y="308" width="255" height="16" fill="#f7b828"/>
+<text x="1220" y="324" font-size="20" fill="#ebe4d6" text-anchor="end">0.340</text>
+<text x="60" y="360" font-size="22" fill="#f7b828">04</text>
+<text x="130" y="360" font-size="22" fill="#ebe4d6">Clutch</text>
+<text x="760" y="360" font-size="22" fill="#ebe4d6" text-anchor="end">547,135</text>
+<rect x="820" y="344" width="300" height="16" fill="#2e3948"/><rect x="820" y="344" width="252" height="16" fill="#f7b828"/>
+<text x="1220" y="360" font-size="20" fill="#ebe4d6" text-anchor="end">0.336</text>
+<text x="60" y="396" font-size="22" fill="#f7b828">05</text>
+<text x="130" y="396" font-size="22" fill="#ebe4d6">King Buffalo</text>
+<text x="760" y="396" font-size="22" fill="#ebe4d6" text-anchor="end">89,501</text>
+<rect x="820" y="380" width="300" height="16" fill="#2e3948"/><rect x="820" y="380" width="244" height="16" fill="#f7b828"/>
+<text x="1220" y="396" font-size="20" fill="#ebe4d6" text-anchor="end">0.326</text>
+<text x="130" y="432" font-size="20" fill="#98a6b8">· · ·</text>
+<text x="60" y="468" font-size="22" fill="#98a6b8">13</text>
+<text x="130" y="468" font-size="22" fill="#98a6b8">Queens of the Stone Age</text>
+<text x="760" y="468" font-size="22" fill="#98a6b8" text-anchor="end">3,871,909</text>
+<rect x="820" y="452" width="300" height="16" fill="#2e3948"/><rect x="820" y="452" width="103" height="16" fill="#98a6b8"/>
+<text x="1220" y="468" font-size="20" fill="#98a6b8" text-anchor="end">0.137</text>
+<text x="1220" y="518" font-size="13" fill="#98a6b8" text-anchor="end">Live ranking against a real Spotify profile, 2026-11-26</text>
+</g></svg>

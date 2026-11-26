@@ -1,226 +1,170 @@
-# Spotify Curator
+<p align="center">
+  <img src="docs/assets/banner.svg" width="100%" alt="spotify-curator ranking stoner rock artists for a real profile: Slomosa, with 67,078 Last.fm listeners, ranks first; Queens of the Stone Age, with 3.9 million, ranks 13th.">
+</p>
 
-[![CI](https://github.com/petekaik/spotify-curator/actions/workflows/ci.yml/badge.svg)](https://github.com/petekaik/spotify-curator/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-31%20passing-brightgreen)](tests/)
-[![Python](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+<p align="center">
+  <a href="https://github.com/petekaik/spotify-curator/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/petekaik/spotify-curator/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/petekaik/spotify-curator/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/petekaik/spotify-curator/actions/workflows/codeql.yml/badge.svg"></a>
+  <img alt="Coverage gate 80%" src="https://img.shields.io/badge/coverage%20gate-80%25-2e3948">
+  <img alt="Python 3.12 | 3.13" src="https://img.shields.io/badge/python-3.12%20%7C%203.13-2e3948">
+  <a href="https://github.com/astral-sh/ruff"><img alt="Ruff" src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json"></a>
+  <a href="CLAUDE.md"><img alt="Built with Claude Code" src="https://img.shields.io/badge/built%20with-Claude%20Code-f7b828"></a>
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-2e3948"></a>
+</p>
 
-**A truly intelligent playlist designer** that finds small and emerging
-artists based on the user's listening preferences — without the
-recommendation-bubble effect.
+Spotify recommends what already works, so the same popular artists keep coming back.
+**spotify-curator** reads your Spotify listening history, looks for artists with a fraction of
+that audience who still fit your taste, and writes them into a playlist.
 
-> **Status:** v0.1.0-dev — FP-0/1/1b/2 ✅ | FP-3 next
+It runs as a command-line tool, and as an agent skill inside Docker so another AI agent can ask
+it for "this week's calming picks".
 
-## 🎯 Vision
+## How it works
 
-Spotify's own "Discover Weekly" and "Release Radar" recommend primarily
-artists who are known to work — i.e. popular. This project flips the
-logic around: **the less heard, the more interesting the discovery** —
-> **Status:** v0.2.0-dev — Docker + Hermes skill + tools ready, **FP-3b next**
+```mermaid
+flowchart LR
+    subgraph You
+        S[Spotify top artists<br/>and tracks, 3 time ranges]
+    end
+    subgraph Profile
+        P[Taste profile<br/>artist + genre weights]
+    end
+    subgraph Discovery
+        L[Last.fm tags]
+        LB[ListenBrainz]
+        MB[MusicBrainz]
+        R[Reddit]
+    end
+    S --> P
+    L & LB & MB & R --> C[Candidates]
+    P --> K{Rank}
+    C --> K
+    K -- "genre fit + few listeners<br/>− mainstream penalty" --> T[Resolve on Spotify<br/>pick tracks]
+    T --> PL[(Playlist:<br/>no artist twice in a row)]
+```
 
-## 🧩 What's new in v0.2.0
+1. **Profile.** Your top artists and tracks for the last 4 weeks, 6 months and all time are
+   blended (50/30/20) into artist and genre weights. Spotify no longer returns artist genres, so
+   genres come from each artist's top Last.fm tags.
+2. **Discover.** Candidates come from Last.fm tag charts, enriched with listener counts and tags.
+   ListenBrainz, MusicBrainz and Reddit clients exist and are tested, but not yet wired into
+   playlist creation.
+3. **Rank.** The score rewards genre overlap with your profile and a small audience
+   (log-scaled Last.fm listeners), and penalises artists above 50,000 listeners.
+4. **Build.** Each candidate is matched to a Spotify artist by exact name, two tracks are picked,
+   and the playlist is shuffled so the same artist never plays twice in a row.
 
-- ✅ **Docker deployment** — `deploy/Dockerfile` + `deploy/compose.yml`
-  - Hermes Agent as the runtime inside the container
-  - Bind-mount volumes for live-edit dev
-  - Headless OAuth via `deploy/scripts/auth_on_host.sh` (run on Mac, not in container)
-  - `HERMES_PROFILE=spotify-curator` for isolated config
-  - Port-mapped: 8642 (Hermes API), 8788 (future IPC)
-  - **Portable to QNAP** — same compose works on any Docker host
-- ✅ **Hermes skill** — `skills/spotify-curator/SKILL.md`
-  - 6 tools exposed to other Hermes agents:
-    - `spotify_curator_status` — auth + profile health check
-    - `spotify_curator_refresh_profile` — rebuild taste profile
-    - `spotify_curator_discover` — find emerging artists (no write)
-    - `spotify_curator_generate_mood` — single-mood playlist
-    - `spotify_curator_generate_weekly` — full 6-mood weekly digest
-    - `spotify_curator_get_reports` — past run history
-  - Mood taxonomy: cheerful, calming, stimulating, focus, melancholic, energetic
-- ✅ **154/154 tests PASS** (24 new for hermes_skill tools)
-- 📋 **FP-3b** MusicBrainz discovery (next)
-- 📋 **FP-3c** Bandcamp scraping
-- 📋 **FP-3d** Reddit community mining
-- 📋 **FP-7** Integration tests with vcrpy cassettes
-- 📋 **FP-9** Daemon mode + scheduled weekly digest
-
-## 🚀 Quick start (Docker)
+## Quick start
 
 ```bash
-cd ~/projects/spotify-curator/deploy
-cp .env.example .env
-nano .env  # Fill in API keys
-
-# Run OAuth on host Mac (one-time, browser required)
-./scripts/auth_on_host.sh
-
-# Build and start
-docker compose build
-docker compose up -d
-
-# Talk to the containerized agent
-docker compose exec hermes-spotify-curator hermes chat -q "show me this week's calming picks"
-```
-
-The container runs Hermes Agent with the spotify-curator skill preloaded.
-It listens on port 8642 (Hermes API) and 8788 (future IPC).
-
-## 📊 Test coverage
-
-```
-tests/test_api_v2.py            — 15/15 PASS
-tests/test_profile.py           — 16/16 PASS
-tests/test_lastfm.py            — 10/10 PASS
-tests/test_listenbrainz.py      — 15/15 PASS
-tests/test_ranking.py           — 38/38 PASS
-tests/test_playlist_builder.py  — 19/19 PASS
-tests/test_cli.py               — 17/17 PASS
-tests/test_hermes_skill.py      — 24/24 PASS  ← NEW: Hermes tools
-```
-
-Total **154/154 PASS** in under 5 seconds.
-
-## 🚀 Quick start
-
-```bash
-# 1. Install
-git clone https://github.com/YOUR_USERNAME/spotify-curator.git
-cd spotify-curator
+git clone https://github.com/petekaik/spotify-curator.git && cd spotify-curator
 python3 -m pip install -e ".[dev]"
-
-# 2. Spotify credentials
-#    Create app: https://developer.spotify.com/dashboard
-cp .env.example .env
-#    Edit .env: SPOTIPY_CLIENT_ID, SPOTIPY_CLIENT_SECRET, LASTFM_API_KEY
-
-# 3. Authenticate
-spotify-curator auth                    # Opens browser for OAuth
-
-# 4. Build profile
+spotify-curator init          # writes .env: add your Spotify app and Last.fm keys
+spotify-curator auth          # one-time OAuth in the browser
 spotify-curator profile build
-
-# 5. Find emerging artists (preview)
-spotify-curator discover lastfm --tag "indie rock" --period 6month
-
-# 6. Build & write a playlist to Spotify
-spotify-curator playlist create "Indie Rising" --tag "indie rock"
-
-# Or just preview without writing
-spotify-curator playlist create "Indie Rising" --dry-run
+spotify-curator discover lastfm --tag "stoner rock"
+spotify-curator playlist create "Fresh finds" --tag "stoner rock" --dry-run
 ```
 
-## 📊 Test coverage
+Drop `--dry-run` to write a private playlist to your account. To run it as an agent skill, see
+[deploy/README.md](deploy/README.md): OAuth runs once on the host, and the container reads the
+token from a read-only mount.
 
-```
-tests/test_api_v2.py            — 15/15 PASS  (Spotify API v2 wrapper)
-tests/test_profile.py           — 16/16 PASS  (FP-2: User profile builder)
-tests/test_lastfm.py            — 10/10 PASS  (FP-3: Last.fm discovery)
-tests/test_listenbrainz.py      — 15/15 PASS  (FP-3: ListenBrainz Labs)
-tests/test_ranking.py           — 38/38 PASS  (FP-4: Ranking algorithm)
-tests/test_playlist_builder.py  — 19/19 PASS  (FP-5: Playlist builder)
-tests/test_cli.py               — 17/17 PASS  (FP-6: Typer CLI)
-```
+<details>
+<summary><b>Configuration</b></summary>
 
-Total **130/130 PASS** in under 5 seconds.
-
-## ⚠️ Critical: Spotify's Feb 2026 API changes
-
-Spotify significantly changed the Web API on 2026-02-06
-([migration guide](https://developer.spotify.com/documentation/web-api/tutorials/february-2026-migration-guide)).
-The project takes this into account from day one.
-
-### Removed fields (most important)
-- ❌ `artist.popularity` (0-100) — no longer available in artist lookups
-- ❌ `album.available_markets` — no country codes
-- ❌ `album.album_group` — relationship between artist and album no longer returned
-- ❌ Track-level `album_group`
-- ❌ Genre data is being quietly deprecated
-
-### Removed endpoints
-- ❌ `GET /artists/{id}/top-tracks` — **artist's top tracks not available!**
-- ❌ `GET /browse/new-releases` — new releases removed
-- ❌ `GET /users/{id}/playlists` — user's playlists
-- ❌ `GET /me/following` — followed artists
-- ⚠️ Search `limit` reduced from 50→10
-
-### New endpoints (used by the project)
-- ✅ `PUT /me/library` — save to library
-- ✅ `POST /playlists/{id}/items` — add items to playlist
-
-### Impact on the project
-
-**Spotipy 2.26 has NOT yet been updated** for the Feb 2026 changes.
-We wrote our own `api_v2.py` wrapper that calls `sp._get/_post/_put/_delete`
-directly with the new paths. Top tracks workaround: fetch the artist's
-albums → the album's tracks → sort by album-popularity (still available
-on album objects).
-
-**The popularity field removal** is a bigger problem. Hybrid data from
-multiple sources:
-
-| Signal | Source | Use |
+| Variable | Needed for | Default |
 |---|---|---|
-| Followers + time | Spotify | Growth rate = emerging |
-| Album.popularity | Spotify (still!) | Helper signal |
-| Last.fm scrobble growth | Last.fm API | Direct emerging signal |
-| ListenBrainz ML-similar | ListenBrainz Labs | No Spotify popularity bubble |
-| MusicBrainz genre | MusicBrainz API | Genre accuracy |
-| Bandcamp followers-low | Web-scrape | Indie/small-label community |
-| r/indieheads mentions | Reddit JSON | Human recommendations |
+| `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET` | Spotify ([create an app](https://developer.spotify.com/dashboard)) | none |
+| `SPOTIPY_REDIRECT_URI` | Must match a redirect URI registered on the app | `http://127.0.0.1:43827/spotify/callback` |
+| `LASTFM_API_KEY` | Discovery and genres ([get a key](https://www.last.fm/api/account/create)) | none |
+| `SPOTIFY_CURATOR_HOME` | Profile, caches, token, reports | `~/.spotify-curator` |
+| `SPOTIPY_CACHE_PATH` | Token file location (Docker mounts it read-only) | `$SPOTIFY_CURATOR_HOME/.cache` |
+| `SPOTIPY_OPEN_BROWSER` | Set `false` on headless hosts | `true` |
 
-## 🏗️ Architecture
+</details>
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — 4C model (Context,
-Container, Component, Code) with description of 6 data sources.
+## Status
 
-## 📋 FP plan
+Checked end to end against a real Spotify account on 2026-11-26.
 
-See [docs/FP_PLAN.md](docs/FP_PLAN.md) — WSJF prioritization, FP-2 details,
-acceptance criteria.
+| Area | State |
+|---|---|
+| CLI: profile → discover → rank → playlist | ✅ Works live: 30-track private playlist, 15 of 15 artists found on Spotify |
+| Profile genres from Last.fm tags | ✅ Works live: 144 genres from 127 artists |
+| Docker image with Hermes Agent skill (6 tools) | ✅ Builds and imports in CI · ⏳ not yet run against a live agent |
+| ListenBrainz, MusicBrainz, Reddit sources | ✅ Unit-tested · ⏳ not used by `playlist create` yet |
+| Track choice | ⚠️ Takes the newest release; Spotify's album lists carry no popularity ([FP_PLAN](docs/FP_PLAN.md#known-issues-code-review-2026-11-26)) |
+| Weekly digest daemon (FP-9) | 🚧 Scheduler and IPC done; the digest pipeline is a stub |
+| Web UI (FP-8) | 📋 Planned |
 
-## 🚀 Quick start
+## How it's built
 
-```bash
-# 1. Clone
-git clone https://github.com/YOUR_USERNAME/spotify-curator.git
-cd spotify-curator
+Built with [Claude Code](https://claude.com/claude-code) as co-developer. The agent writes most of
+the code, tests and docs. I set the architecture and backlog priorities, review every change,
+run the live checks and decide what ships. The first build, from an empty repo to OAuth, profile,
+four discovery sources, ranking, playlist builder, CLI and a Docker agent skill with 242 passing
+tests, took one day (2026-07-08).
 
-# 2. Install dependencies
-python3 -m pip install -e ".[dev]"
-
-# 3. Spotify credentials
-#    Create app: https://developer.spotify.com/dashboard
-cp .env.example .env
-#    Edit .env: SPOTIPY_CLIENT_ID and SPOTIPY_CLIENT_SECRET
-
-# 4. Run tests
-pytest tests/ -v
-
-# 5. (Coming) OAuth login
-# spotify-curator auth
+```mermaid
+flowchart LR
+    I["Issue<br/>(Feature form:<br/>story, criteria, WSJF)"] --> B[Ranked backlog<br/>docs/FP_PLAN.md]
+    B --> D["Agent builds it<br/>test first, per CLAUDE.md"]
+    D --> PR[Pull request<br/>template + Claude review]
+    PR --> G{CI gates}
+    G -->|pass| M[main]
+    M --> RL[Tag vX.Y.Z →<br/>GitHub release<br/>from CHANGELOG]
+    G -->|fail| D
 ```
 
-## 📊 Test coverage
+| Practice | How it runs here |
+|---|---|
+| **Requirements** | [Feature issue form](.github/ISSUE_TEMPLATE/feature.yml) with user story, testable acceptance criteria and WSJF score (business value ÷ time) → [FP backlog](docs/FP_PLAN.md) |
+| **Design** | [Architecture](docs/ARCHITECTURE.md), design notes per FP; agent rules in [CLAUDE.md](CLAUDE.md) |
+| **Development** | Test first; tests never call real APIs (mocks and [vcrpy](https://vcrpy.readthedocs.io) cassettes); `pre-commit` runs ruff and a secret scan |
+| **QA** | [CI](.github/workflows/ci.yml): ruff lint and format, 246 tests on Python 3.12 and 3.13, coverage gate 80% (84% today), live end-to-end check before release |
+| **Review** | [PR template](.github/PULL_REQUEST_TEMPLATE.md) records what the agent did and what a human decided; [Claude Code review](.github/workflows/claude.yml) on every PR, and `@claude` in an issue to delegate work |
+| **Security** | [CodeQL](.github/workflows/codeql.yml) weekly and on PRs, [Dependabot](.github/dependabot.yml) for pip, Actions and the Docker base image, no secrets in git |
+| **Ops** | Docker image built and smoke-tested in CI; headless OAuth via a host-side script; config through one module ([src/config.py](src/config.py)) |
+| **Release** | [Keep a Changelog](CHANGELOG.md); pushing a `vX.Y.Z` tag publishes the notes as a [GitHub release](.github/workflows/release.yml) |
+
+One example of the loop working: on 2026-11-26 an agent-run code review found that a test was
+overwriting the real user profile with fixture data, and that the Docker container could never
+find its Spotify token. Both were fixed the same day. The full list is in
+the [changelog](CHANGELOG.md).
+
+## Working with the February 2026 Spotify API
+
+Spotify cut the Web API on 2026-02-06
+([migration guide](https://developer.spotify.com/documentation/web-api/tutorials/february-2026-migration-guide)),
+and spotipy 2.26 has not caught up. [`src/spotify/api_v2.py`](src/spotify/api_v2.py) calls the
+new endpoints directly.
+
+| Change | What this project does |
+|---|---|
+| `artist.popularity` and `artist.genres` gone | Popularity from Last.fm listener counts; genres from Last.fm top tags |
+| `GET /artists/{id}/top-tracks` removed | Tracks taken from the artist's albums (see Status) |
+| Search `limit` capped at 10 | Searches 5 results and keeps the exact name match |
+| New `POST /playlists/{id}/items`, `PUT /me/library` | Used directly, with the JSON body sent as `payload=` |
+
+## Repository layout
 
 ```
-tests/test_api_v2.py            — 15/15 PASS  (Spotify API v2 wrapper)
-tests/test_profile.py           — 16/16 PASS  (FP-2: User profile builder)
-tests/test_lastfm.py            — 10/10 PASS  (FP-3: Last.fm discovery)
-tests/test_listenbrainz.py      — 15/15 PASS  (FP-3: ListenBrainz Labs)
-tests/test_ranking.py           — 38/38 PASS  (FP-4: Ranking algorithm)
-tests/test_playlist_builder.py  — 19/19 PASS  (FP-5: Playlist builder)
+src/
+  spotify/        OAuth and the Feb 2026 API wrapper
+  analyzer/       taste profile, weights, Parquet cache
+  discovery/      Last.fm, ListenBrainz, MusicBrainz, Reddit + ranking
+  playlist/       resolve, pick tracks, shuffle, write
+  cli/            Typer CLI
+  hermes_skill/   the same pipeline as 6 agent tools
+  daemon/         scheduler and IPC (digest is a stub)
+  config.py       .env loading and DATA_DIR
+skills/           Hermes skill definition and references
+deploy/           Dockerfile, compose, host-side OAuth script
+docs/             backlog, architecture, v0.2 plan
+tests/            246 tests, fixtures and cassettes
 ```
-
-Total **113/113 PASS** in under 5 seconds.
-
-## 📚 Important links
-
-- [Spotify Web API Feb 2026 Migration](https://developer.spotify.com/documentation/web-api/tutorials/february-2026-migration-guide)
-- [Spotify Web API Reference](https://developer.spotify.com/documentation/web-api)
-- [Last.fm API](https://www.last.fm/api)
-- [MusicBrainz API](https://musicbrainz.org/doc/MusicBrainz_API)
-- [ListenBrainz Labs](https://labs.api.listenbrainz.org/)
-- [spotipy GitHub](https://github.com/spotipy-dev/spotipy)
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+[MIT](LICENSE) © Petteri Kaikkonen · More projects at [gitpages.morgeweb.com](https://gitpages.morgeweb.com/)

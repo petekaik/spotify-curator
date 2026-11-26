@@ -61,7 +61,7 @@ Project root (../) bind-mounted to /opt/project/
 
 ```bash
 # 1. Configure env
-cd ~/projects/spotify-curator/deploy
+cd deploy   # from the repo root
 cp .env.example .env
 nano .env  # Fill in SPOTIPY_CLIENT_ID, SPOTIPY_CLIENT_SECRET, LASTFM_API_KEY, OPENROUTER_API_KEY
 
@@ -104,11 +104,11 @@ When QNAP is reachable again:
 
 ```bash
 # 1. Copy deploy/ to QNAP
-scp -r deploy/ qnap:/share/Programs/spotify-curator/
+scp -r deploy/ <nas-host>:<install-dir>/
 
 # 2. SSH in and authenticate
-ssh qnap
-cd /share/Programs/spotify-curator/deploy
+ssh <nas-host>
+cd <install-dir>/deploy
 ./scripts/auth_on_host.sh   # Mac-side auth, then copy cache
 
 # 3. Start
