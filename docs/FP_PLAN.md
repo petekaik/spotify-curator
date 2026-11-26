@@ -33,6 +33,7 @@ Just like Clairvoyant-Optics project convention.
 | FP-9 | Daemon mode | ⚠️ Scheduler + IPC done; `run_weekly_digest` is a stub (no profile refresh, no discovery, no playlist) and no CLI entry point |
 | FP-10 | GH Actions CI | ✅ (`.github/workflows/ci.yml`, ubuntu, `pip install -e ".[dev]"`) |
 | FP-11 | First-run tutorial | Open (`spotify-curator init` is a start) |
+| FP-12 | Ranker evaluation harness (`evals/`) | ✅ Gate in CI; found two issues below |
 
 **Total: 246/246 tests PASS**
 
@@ -42,6 +43,8 @@ Just like Clairvoyant-Optics project convention.
 - **Genres (fixed 2026-11-26):** Spotify no longer returns artist genres for this app; profile genres and candidate tags now come from Last.fm `artist.getInfo` top tags (lowercased, cached).
 - **`GET /me/library` returns 405:** the fallback to `/me/albums` works; the "NEW" endpoint call in `fetch.py` can go.
 - **Last.fm listeners (fixed 2026-11-26):** `tag.getTopArtists` results are enriched via `artist.getInfo`. Tag top lists are still dominated by big artists (all >50k listeners for "stoner rock"); better emerging sources (similar-artist expansion, deeper pages) are open.
+- **Known artists not excluded (eval 2026-11-26):** ranking never removes artists already in the profile, so 12 of the top 15 in the eval pool are ones the listener knows (`known_share` 0.80).
+- **Geo bonus has no effect (eval 2026-11-26):** `geo_bonus` 0.05 × matches/3 adds 0.017 for one tag, too little to change the top 15. Listed in `KNOWN_FAILING` in `evals/harness.py`.
 - **Reports format:** the daemon writes `DATA_DIR/reports/<run_id>.md`; the `spotify_curator_get_reports` Hermes tool expects `DATA_DIR/reports/<run>/playlists.json`. Settle on one format when FP-9 is finished.
 
 ### Runtime config

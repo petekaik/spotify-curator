@@ -1,0 +1,28 @@
+{
+  "dataset": "d8ccfe101859",
+  "tuning": {
+    "genre_match": 0.4,
+    "emerging_signal": 0.25,
+    "feature_match": 0.2,
+    "discovery_bonus": 0.1,
+    "geo_bonus": 0.05,
+    "mainstream_penalty": -0.3,
+    "mainstream_listener_threshold": 50000,
+    "penalty_steepness": 1.0,
+    "discovery_album_full_bonus": 1,
+    "discovery_album_zero_bonus": 10,
+    "preferred_geo_tags": [],
+    "mood_tags": {
+      "cheerful": "indie pop",
+      "calming": "ambient",
+      "stimulating": "math rock",
+      "focus": "minimal",
+      "melancholic": "sadcore",
+      "energetic": "post-punk"
+    }
+  },
+  "mainstream_share": 0.4666666666666667,
+  "known_share": 0.8,
+  "taste_fit": 1.0,
+  "obscurity_lift": 5.5566241934166465
+}
