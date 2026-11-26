@@ -23,24 +23,12 @@ it for "this week's calming picks".
 
 ```mermaid
 flowchart LR
-    subgraph You
-        S[Spotify top artists<br/>and tracks, 3 time ranges]
-    end
-    subgraph Profile
-        P[Taste profile<br/>artist + genre weights]
-    end
-    subgraph Discovery
-        L[Last.fm tags]
-        LB[ListenBrainz]
-        MB[MusicBrainz]
-        R[Reddit]
-    end
-    S --> P
-    L & LB & MB & R --> C[Candidates]
-    P --> K{Rank}
+    S["Your Spotify<br/>top artists + tracks"] --> P["Taste profile<br/>artists + genres"]
+    D["Last.fm · ListenBrainz<br/>MusicBrainz · Reddit"] --> C["Candidates"]
+    P --> K{"Rank"}
     C --> K
-    K -- "genre fit + few listeners<br/>− mainstream penalty" --> T[Resolve on Spotify<br/>pick tracks]
-    T --> PL[(Playlist:<br/>no artist twice in a row)]
+    K --> T["Match on Spotify<br/>2 tracks each"]
+    T --> PL[("Playlist")]
 ```
 
 1. **Profile.** Your top artists and tracks for the last 4 weeks, 6 months and all time are
