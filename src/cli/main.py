@@ -22,6 +22,8 @@ from rich.table import Table
 
 from src.analyzer.cache import PROFILE_PATH, load_profile, profile_age_hours, profile_exists
 from src.analyzer.profile import ProfileBuilder
+from src.daemon.scheduler import CuratorScheduler, default_weekly_digest
+from src.daemon.workflow import run_weekly_digest
 from src.discovery.ranking import (
     Candidate,
     deduplicate_candidates,
@@ -56,10 +58,12 @@ console = Console()
 profile_app = typer.Typer(help="Manage user taste profile")
 discover_app = typer.Typer(help="Discover emerging artists")
 playlist_app = typer.Typer(help="Build and write playlists")
+digest_app = typer.Typer(help="Run or schedule the weekly digest")
 
 app.add_typer(profile_app, name="profile")
 app.add_typer(discover_app, name="discover")
 app.add_typer(playlist_app, name="playlist")
+app.add_typer(digest_app, name="digest")
 
 
 # ────────────────────────────────────────────────────────────
@@ -370,6 +374,35 @@ def playlist_create(
 
     playlist_url = f"https://open.spotify.com/playlist/{playlist.spotify_playlist_id}"
     console.print(f"[green]✓ Playlist created:[/green] {playlist_url}")
+
+
+# ────────────────────────────────────────────────────────────
+# Digest
+# ────────────────────────────────────────────────────────────
+
+
+@digest_app.command("run")
+def digest_run(
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Preview without writing playlists to Spotify"
+    ),
+):
+    """Run the weekly digest once and print the report path."""
+    result = run_weekly_digest(dry_run=dry_run)
+    console.print(f"[green]✓ Digest run[/green] {result['run_id']}")
+    if result.get("report_path"):
+        console.print(f"Report: {result['report_path']}")
+    for warning in result.get("warnings", []):
+        console.print(f"[yellow]![/yellow] {warning}")
+
+
+@digest_app.command("schedule")
+def digest_schedule():
+    """Schedule the weekly digest (Sundays 20:00) and block."""
+    scheduler = CuratorScheduler()
+    scheduler.schedule_weekly_digest(default_weekly_digest)
+    console.print("Weekly digest scheduled. Press Ctrl+C to stop.")
+    scheduler.start()
 
 
 # ────────────────────────────────────────────────────────────

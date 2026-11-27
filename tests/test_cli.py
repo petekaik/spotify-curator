@@ -322,6 +322,29 @@ class TestPlaylistCreate:
         assert "open.spotify.com/playlist/new-playlist-id" in result.stdout
 
 
+class TestDigestCommands:
+    def test_digest_run_dry_run_prints_report_path(self):
+        with patch(
+            "src.cli.main.run_weekly_digest",
+            return_value={"run_id": "r1", "report_path": "/data/reports/r1/report.md"},
+        ) as run:
+            result = runner.invoke(app, ["digest", "run", "--dry-run"])
+        assert result.exit_code == 0
+        run.assert_called_once_with(dry_run=True)
+        assert "/data/reports/r1/report.md" in result.stdout
+
+    def test_digest_schedule_starts_blocking_scheduler(self):
+        with (
+            patch("src.cli.main.CuratorScheduler") as scheduler_cls,
+            patch("src.cli.main.default_weekly_digest") as digest_job,
+        ):
+            result = runner.invoke(app, ["digest", "schedule"])
+        assert result.exit_code == 0
+        scheduler = scheduler_cls.return_value
+        scheduler.schedule_weekly_digest.assert_called_once_with(digest_job)
+        scheduler.start.assert_called_once()
+
+
 class TestNoArgsShowsHelp:
     def test_no_args(self):
         """No-args invocation should exit non-zero (Typer convention) and show help."""

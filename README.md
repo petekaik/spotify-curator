@@ -120,7 +120,7 @@ Checked end to end against a real Spotify account on 2026-11-26.
 | ListenBrainz, MusicBrainz, Reddit sources | ✅ Unit-tested · ⏳ not used by `playlist create` yet |
 | Track choice | ✅ Works live: each artist's most-played songs on Last.fm, matched on Spotify by artist ID |
 | MCP server: 8 tools, stdio and HTTP, persistent tuning | ✅ Checked with a real MCP client over stdio and HTTP |
-| Weekly digest daemon (FP-9) | 🚧 Scheduler and IPC done; the digest pipeline is a stub |
+| Weekly digest daemon (FP-9) | ✅ `spotify-curator digest run` builds a playlist per mood; `digest schedule` runs it Sundays 20:00 |
 | Web UI (FP-8) | 📋 Planned |
 
 ## How it's built
@@ -184,12 +184,12 @@ src/
   cli/            Typer CLI
   hermes_skill/   the same pipeline as 8 agent tools
   mcp_server.py   the same tools over MCP (stdio and HTTP)
-  daemon/         scheduler and IPC (digest is a stub)
+  daemon/         scheduler, IPC and the weekly digest
   config.py       .env loading and DATA_DIR
 skills/           Hermes skill definition and references
 deploy/           Dockerfile, compose, host-side OAuth script
 docs/             backlog, architecture, v0.2 plan
-tests/            262 tests, fixtures and cassettes
+tests/            278 tests, fixtures and cassettes
 ```
 
 ## License

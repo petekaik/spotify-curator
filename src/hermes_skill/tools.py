@@ -425,10 +425,8 @@ def spotify_curator_get_reports(
     Returns:
         dict with list of past runs
 
-    NOTE: This requires a `reports/` directory under SPOTIFY_CURATOR_HOME,
-          which is currently only written by the planned daemon (FP-9).
-          For v0.1.0/v0.2.0, this returns an empty list unless the
-          user has manually saved reports.
+    NOTE: Reads the `reports/` directory under SPOTIFY_CURATOR_HOME, written
+          by the weekly digest (FP-9). Each run has a playlists.json.
     """
     try:
         from src.config import DATA_DIR
@@ -449,15 +447,16 @@ def spotify_curator_get_reports(
                 continue
             try:
                 meta = json.loads(meta_file.read_text())
-                if mood_filter and not any(
-                    p.get("mood") == mood_filter for p in meta.get("playlists", [])
-                ):
-                    continue
+                playlists = meta.get("playlists", [])
+                if mood_filter:
+                    playlists = [p for p in playlists if p.get("mood") == mood_filter]
+                    if not playlists:
+                        continue
                 runs.append(
                     {
                         "id": run_dir.name,
                         "generated_at": meta.get("generated_at"),
-                        "playlists": meta.get("playlists", []),
+                        "playlists": playlists,
                     }
                 )
             except (json.JSONDecodeError, OSError):
