@@ -11,6 +11,7 @@ matching section below as a GitHub release.
   builds one playlist per mood through the existing Hermes tools. Each run writes
   `DATA_DIR/reports/<run_id>/playlists.json` and `report.md`; one failing mood is a warning, not a
   failed run. New CLI: `spotify-curator digest run [--dry-run]` and `spotify-curator digest schedule`.
+  Scheduled runs use `dry_run=False`, so they create real Spotify playlists.
 - `curator-devops` Hermes skill and [docs/AGENT_ROLES.md](docs/AGENT_ROLES.md): Ollama-backed
   agents do curator, DevOps and feature work; Claude reviews and steers; humans merge and release.
 - Ranker evaluation harness (`python -m evals.harness`): runs the real ranker on a frozen snapshot

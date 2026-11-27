@@ -152,9 +152,6 @@ class TestWeeklyReport:
             finished_at=datetime(2026, 7, 8, 20, 5, 0),
             duration_seconds=300.0,
             profile_refreshed=True,
-            candidates_discovered=100,
-            candidates_ranked=50,
-            candidates_after_dedup=30,
             playlists_generated=2,
             playlists=[
                 {
@@ -303,6 +300,24 @@ class TestWeeklyDigestWorkflow:
         assert "focus" not in [p["mood"] for p in meta["playlists"]]
         assert any("lastfm_down" in w for w in result["warnings"])
 
+    def test_a_mood_that_raises_warns_but_does_not_stop_the_run(self, tmp_path):
+        """A raised exception is handled like a returned error."""
+
+        def fake_mood(mood, dry_run=False):
+            if mood == "focus":
+                raise RuntimeError("lastfm exploded")
+            return _mood_result(mood, dry_run)
+
+        with patch(
+            "src.daemon.workflow.spotify_curator_generate_mood",
+            side_effect=fake_mood,
+        ):
+            result = run_weekly_digest(report_dir=tmp_path, dry_run=True)
+
+        meta = _read_meta(tmp_path, result)
+        assert len(meta["playlists"]) == 5
+        assert any("lastfm exploded" in w for w in result["warnings"])
+
     def test_failing_refresh_falls_back_to_cached_profile(self, tmp_path):
         """Criterion 4: refresh failure warns, still runs, never raises."""
         with (
@@ -320,6 +335,24 @@ class TestWeeklyDigestWorkflow:
         assert result["finished_at"] is not None
         assert any("profile" in w.lower() for w in result["warnings"])
         assert result["profile_refreshed"] is False
+        assert len(_read_meta(tmp_path, result)["playlists"]) == 6
+
+    def test_refresh_that_raises_falls_back_to_cached_profile(self, tmp_path):
+        """A raised refresh exception is a warning, not a failed run."""
+        with (
+            patch(
+                "src.daemon.workflow.spotify_curator_refresh_profile",
+                side_effect=RuntimeError("spotify down"),
+            ),
+            patch(
+                "src.daemon.workflow.spotify_curator_generate_mood",
+                side_effect=_mood_result,
+            ),
+        ):
+            result = run_weekly_digest(report_dir=tmp_path)
+
+        assert result["finished_at"] is not None
+        assert any("spotify down" in w for w in result["warnings"])
         assert len(_read_meta(tmp_path, result)["playlists"]) == 6
 
     def test_written_run_is_readable_by_get_reports(self, tmp_path, monkeypatch):

@@ -39,9 +39,6 @@ class WeeklyReport:
 
     # Pipeline stats
     profile_refreshed: bool = False
-    candidates_discovered: int = 0
-    candidates_ranked: int = 0
-    candidates_after_dedup: int = 0
     playlists_generated: int = 0
     playlists: list[dict] = field(default_factory=list)  # [{mood, name, url, n_tracks}]
 
@@ -63,9 +60,6 @@ class WeeklyReport:
             "## Pipeline",
             "",
             f"- Profile refreshed: {'✅' if self.profile_refreshed else '❌'}",
-            f"- Candidates discovered: {self.candidates_discovered}",
-            f"- After ranking: {self.candidates_ranked}",
-            f"- After dedup: {self.candidates_after_dedup}",
             f"- Playlists generated: {self.playlists_generated}",
             "",
             "## Sources used",
@@ -122,15 +116,13 @@ class WeeklyReport:
 
 
 def run_weekly_digest(
-    profile_user_id: str = "default",
     report_dir: Path | None = None,
     dry_run: bool = False,
 ) -> dict:
     """Run the full weekly digest pipeline.
 
     Args:
-        profile_user_id: which user profile to base recommendations on
-        report_dir: where to save the Markdown report (default: DATA_DIR/reports/)
+        report_dir: where to save reports (default: DATA_DIR/reports/)
         dry_run: if True, don't write to Spotify (useful for testing)
 
     Returns:
@@ -149,7 +141,7 @@ def run_weekly_digest(
     run_dir.mkdir(parents=True, exist_ok=True)
 
     log.info(f"Starting weekly digest run {run_id}")
-    log.info(f"Profile: {profile_user_id}, dry_run: {dry_run}")
+    log.info(f"dry_run: {dry_run}")
 
     try:
         # 1. Refresh the taste profile; fall back to the cached one on failure
@@ -167,7 +159,6 @@ def run_weekly_digest(
                 report.warnings.append(f"Profile refresh failed: {e}; using cached profile")
 
         # 2. Build one playlist per mood. A failing mood only adds a warning.
-        report.sources.append("lastfm")
         for mood in VALID_MOODS:
             try:
                 result = spotify_curator_generate_mood(mood, dry_run=dry_run)
@@ -188,6 +179,8 @@ def run_weekly_digest(
                 }
             )
         report.playlists_generated = len(report.playlists)
+        if report.playlists:
+            report.sources.append("lastfm")
 
         # 3. Save the shared report format + a human-readable report
         report.finished_at = datetime.now()

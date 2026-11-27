@@ -35,7 +35,7 @@ Just like Clairvoyant-Optics project convention.
 | FP-11 | First-run tutorial | Open (`spotify-curator init` is a start) |
 | FP-12 | Ranker evaluation harness (`evals/`) | ✅ Gate in CI; found two issues below |
 
-**Total: 278/278 tests PASS**
+**Total: 280/280 tests PASS**
 
 ### Known issues (code review 2026-11-26)
 

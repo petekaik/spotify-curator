@@ -262,15 +262,12 @@ class CuratorScheduler:
 def default_weekly_digest() -> dict:
     """Default weekly digest workflow.
 
-    Runs the full pipeline:
-    1. Refresh user profile (top artists/tracks from last 6 months)
-    2. Discover candidates from all sources (Last.fm, ListenBrainz, MusicBrainz, Reddit)
-    3. Rank candidates against profile
-    4. Generate 6 mood playlists
-    5. Save weekly report
+    Refreshes the taste profile, builds one playlist per mood through the
+    Hermes tools (writing them to Spotify) and saves the report.
 
     Returns:
-        dict with keys: profile_refreshed, candidates_count, playlists_generated, report_path
+        dict with the WeeklyReport fields (profile_refreshed, playlists,
+        playlists_generated, warnings, ...) plus report_path.
     """
     from src.daemon.workflow import run_weekly_digest
 

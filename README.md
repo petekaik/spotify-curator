@@ -189,7 +189,7 @@ src/
 skills/           Hermes skill definition and references
 deploy/           Dockerfile, compose, host-side OAuth script
 docs/             backlog, architecture, v0.2 plan
-tests/            278 tests, fixtures and cassettes
+tests/            280 tests, fixtures and cassettes
 ```
 
 ## License
