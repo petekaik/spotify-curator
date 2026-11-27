@@ -10,6 +10,7 @@ collects results.
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 from collections.abc import Callable
@@ -18,6 +19,11 @@ from datetime import datetime
 from pathlib import Path
 
 from src.config import DATA_DIR
+from src.hermes_skill.tools import (
+    VALID_MOODS,
+    spotify_curator_generate_mood,
+    spotify_curator_refresh_profile,
+)
 
 log = logging.getLogger(__name__)
 
@@ -33,11 +39,8 @@ class WeeklyReport:
 
     # Pipeline stats
     profile_refreshed: bool = False
-    candidates_discovered: int = 0
-    candidates_ranked: int = 0
-    candidates_after_dedup: int = 0
     playlists_generated: int = 0
-    playlists: list[dict] = field(default_factory=list)  # [{mood, playlist_id, track_count}]
+    playlists: list[dict] = field(default_factory=list)  # [{mood, name, url, n_tracks}]
 
     # Sources used
     sources: list[str] = field(default_factory=list)
@@ -57,9 +60,6 @@ class WeeklyReport:
             "## Pipeline",
             "",
             f"- Profile refreshed: {'✅' if self.profile_refreshed else '❌'}",
-            f"- Candidates discovered: {self.candidates_discovered}",
-            f"- After ranking: {self.candidates_ranked}",
-            f"- After dedup: {self.candidates_after_dedup}",
             f"- Playlists generated: {self.playlists_generated}",
             "",
             "## Sources used",
@@ -79,7 +79,7 @@ class WeeklyReport:
             for pl in self.playlists:
                 lines.append(
                     f"- **{pl['mood']}**: "
-                    f"[Open in Spotify]({pl.get('url', '#')}) — {pl['track_count']} tracks"
+                    f"[Open in Spotify]({pl.get('url') or '#'}) — {pl.get('n_tracks', 0)} tracks"
                 )
             lines.append("")
 
@@ -116,15 +116,13 @@ class WeeklyReport:
 
 
 def run_weekly_digest(
-    profile_user_id: str = "default",
     report_dir: Path | None = None,
     dry_run: bool = False,
 ) -> dict:
     """Run the full weekly digest pipeline.
 
     Args:
-        profile_user_id: which user profile to base recommendations on
-        report_dir: where to save the Markdown report (default: DATA_DIR/reports/)
+        report_dir: where to save reports (default: DATA_DIR/reports/)
         dry_run: if True, don't write to Spotify (useful for testing)
 
     Returns:
@@ -139,65 +137,72 @@ def run_weekly_digest(
 
     if report_dir is None:
         report_dir = DATA_DIR / "reports"
-    report_dir.mkdir(parents=True, exist_ok=True)
+    run_dir = report_dir / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
 
     log.info(f"Starting weekly digest run {run_id}")
-    log.info(f"Profile: {profile_user_id}, dry_run: {dry_run}")
+    log.info(f"dry_run: {dry_run}")
 
     try:
-        # 1. Refresh profile
-        try:
-            # In a real run, this fetches from Spotify API
-            # For now, just mark as refreshed
-            report.profile_refreshed = True
-            report.warnings.append("Profile refresh not yet implemented; using cached profile")
-        except Exception as e:
-            report.errors.append(f"Profile refresh failed: {e}")
+        # 1. Refresh the taste profile; fall back to the cached one on failure
+        if not dry_run:
+            try:
+                refreshed = spotify_curator_refresh_profile()
+                if "error" in refreshed:
+                    report.warnings.append(
+                        f"Profile refresh failed: {refreshed['error']} "
+                        f"({refreshed.get('details', '')}); using cached profile"
+                    )
+                else:
+                    report.profile_refreshed = True
+            except Exception as e:
+                report.warnings.append(f"Profile refresh failed: {e}; using cached profile")
 
-        # 2. Discover candidates
-        try:
-            # Stub: each source returns 10-20 candidates
-            candidates = []
-            report.sources.append("lastfm")
-            report.sources.append("musicbrainz")
-            report.sources.append("reddit")
-        except Exception as e:
-            report.errors.append(f"Discovery failed: {e}")
-            candidates = []
-        report.candidates_discovered = len(candidates) if "candidates" in dir() else 0
-
-        # 3. Rank
-        try:
-            from src.discovery.ranking import rank_artists
-
-            if candidates:
-                ranked = rank_artists(candidates, profile=None)
-                report.candidates_ranked = len(ranked)
-            else:
-                report.candidates_ranked = 0
-                report.warnings.append("No candidates to rank; pipeline partial")
-        except Exception as e:
-            report.errors.append(f"Ranking failed: {e}")
-
-        # 4. Generate playlists (stub for now)
-        if not dry_run and report.candidates_ranked > 0:
-            # Real implementation would call playlist.builder.build_playlist()
-            report.warnings.append(
-                "Playlist generation requires Spotify OAuth; skipped in dry_run=False stub"
+        # 2. Build one playlist per mood. A failing mood only adds a warning.
+        for mood in VALID_MOODS:
+            try:
+                result = spotify_curator_generate_mood(mood, dry_run=dry_run)
+            except Exception as e:
+                report.warnings.append(f"Mood {mood} failed: {e}")
+                continue
+            if "error" in result:
+                report.warnings.append(
+                    f"Mood {mood} failed: {result['error']} ({result.get('details', '')})"
+                )
+                continue
+            report.playlists.append(
+                {
+                    "mood": mood,
+                    "name": result.get("playlist_name"),
+                    "url": result.get("playlist_url"),
+                    "n_tracks": result.get("tracks_count", 0),
+                }
             )
-        elif dry_run:
-            log.info("Dry run: not writing playlists to Spotify")
+        report.playlists_generated = len(report.playlists)
+        if report.playlists:
+            report.sources.append("lastfm")
 
-        # 5. Save report
+        # 3. Save the shared report format + a human-readable report
         report.finished_at = datetime.now()
         report.duration_seconds = (report.finished_at - report.started_at).total_seconds()
 
-        # Markdown
-        md_path = report_dir / f"{run_id}.md"
+        (run_dir / "playlists.json").write_text(
+            json.dumps(
+                {
+                    "id": run_id,
+                    "generated_at": started.isoformat(),
+                    "dry_run": dry_run,
+                    "playlists": report.playlists,
+                    "warnings": report.warnings,
+                },
+                indent=2,
+            )
+        )
+        md_path = run_dir / "report.md"
         md_path.write_text(report.to_markdown())
         log.info(f"Report saved to {md_path}")
 
-        return report.to_dict()
+        return {**report.to_dict(), "report_path": str(md_path)}
 
     except Exception as e:
         log.exception(f"Weekly digest run {run_id} failed")

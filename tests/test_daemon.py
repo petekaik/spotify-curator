@@ -20,6 +20,7 @@ from src.daemon.workflow import (
     run_weekly_digest,
     send_command,
 )
+from src.hermes_skill.tools import VALID_MOODS, spotify_curator_get_reports
 
 # ────────────────────────────────────────────────────────────
 # Scheduler config
@@ -151,20 +152,17 @@ class TestWeeklyReport:
             finished_at=datetime(2026, 7, 8, 20, 5, 0),
             duration_seconds=300.0,
             profile_refreshed=True,
-            candidates_discovered=100,
-            candidates_ranked=50,
-            candidates_after_dedup=30,
             playlists_generated=2,
             playlists=[
                 {
                     "mood": "cheerful",
                     "url": "https://open.spotify.com/playlist/abc",
-                    "track_count": 25,
+                    "n_tracks": 25,
                 },
                 {
                     "mood": "calming",
                     "url": "https://open.spotify.com/playlist/def",
-                    "track_count": 20,
+                    "n_tracks": 20,
                 },
             ],
             sources=["lastfm", "musicbrainz"],
@@ -212,66 +210,188 @@ class TestWeeklyReport:
 # ────────────────────────────────────────────────────────────
 
 
+def _mood_result(mood, dry_run=True, tracks=3):
+    return {
+        "success": True,
+        "mood": mood,
+        "dry_run": dry_run,
+        "playlist_name": f"Weekly {mood.capitalize()}",
+        "playlist_url": None if dry_run else f"https://open.spotify.com/playlist/{mood}",
+        "tracks_count": tracks,
+    }
+
+
+def _read_meta(tmp_path, result):
+    return json.loads((tmp_path / result["run_id"] / "playlists.json").read_text())
+
+
 class TestWeeklyDigestWorkflow:
-    def test_runs_in_dry_run(self, tmp_path):
-        """Dry run should complete without crashing and write a report."""
-        result = run_weekly_digest(
-            profile_user_id="test_user",
-            report_dir=tmp_path,
-            dry_run=True,
-        )
-        assert "run_id" in result
-        assert result["finished_at"] is not None
-        assert result["duration_seconds"] is not None
-        # Should have at least 1 candidate (from any source) or warnings
-        # (Note: candidate fetching is stubbed — may produce 0 + warning)
-        assert isinstance(result["candidates_discovered"], int)
+    def test_dry_run_generates_every_mood_and_writes_report(self, tmp_path):
+        """Criterion 1: dry run calls generate_mood per mood, never refreshes."""
+        calls = []
 
-    def test_writes_markdown_report(self, tmp_path):
-        """A .md file should be written to report_dir."""
-        result = run_weekly_digest(
-            profile_user_id="test_user",
-            report_dir=tmp_path,
-            dry_run=True,
-        )
-        run_id = result["run_id"]
-        md_path = tmp_path / f"{run_id}.md"
-        assert md_path.exists()
-        content = md_path.read_text()
-        assert "Weekly Digest" in content
+        def fake_mood(mood, dry_run=False):
+            calls.append((mood, dry_run))
+            return _mood_result(mood, dry_run)
 
-    def test_captures_errors_gracefully(self, tmp_path):
-        """If a step fails, the workflow should still produce a report."""
-        # Force an error in the discovery step
-        with patch(
-            "src.discovery.sources.lastfm.get_top_artists_for_tag",
-            side_effect=Exception("API down"),
+        with (
+            patch(
+                "src.daemon.workflow.spotify_curator_generate_mood",
+                side_effect=fake_mood,
+            ),
+            patch("src.daemon.workflow.spotify_curator_refresh_profile") as refresh,
         ):
-            result = run_weekly_digest(
-                profile_user_id="test_user",
-                report_dir=tmp_path,
-                dry_run=True,
-            )
-        # Should still finish
-        assert result["finished_at"] is not None
-        # Errors are captured, not raised
-        # (note: get_top_artists_for_tag is imported but not called in our stub)
+            result = run_weekly_digest(report_dir=tmp_path, dry_run=True)
 
-    def test_includes_sources_list(self, tmp_path):
-        result = run_weekly_digest(
-            profile_user_id="u",
-            report_dir=tmp_path,
-            dry_run=True,
-        )
-        # At minimum, our stub adds the source names
-        assert "lastfm" in result["sources"]
-        assert "musicbrainz" in result["sources"]
-        assert "reddit" in result["sources"]
+        assert [mood for mood, _ in calls] == list(VALID_MOODS)
+        assert all(called_dry_run for _, called_dry_run in calls)
+        refresh.assert_not_called()
+
+        meta = _read_meta(tmp_path, result)
+        assert meta["dry_run"] is True
+        assert len(meta["playlists"]) == 6
+        assert result["report_path"] == str(tmp_path / result["run_id"] / "report.md")
+        assert (tmp_path / result["run_id"] / "report.md").exists()
+
+    def test_refreshes_profile_before_any_mood(self, tmp_path):
+        """Criterion 2: refresh_profile runs exactly once, before generate_mood."""
+        order = []
+
+        def fake_refresh():
+            order.append("refresh")
+            return {"success": True}
+
+        def fake_mood(mood, dry_run=False):
+            order.append(mood)
+            return _mood_result(mood, dry_run)
+
+        with (
+            patch(
+                "src.daemon.workflow.spotify_curator_refresh_profile",
+                side_effect=fake_refresh,
+            ) as refresh,
+            patch(
+                "src.daemon.workflow.spotify_curator_generate_mood",
+                side_effect=fake_mood,
+            ),
+        ):
+            run_weekly_digest(report_dir=tmp_path)
+
+        refresh.assert_called_once()
+        assert order[0] == "refresh"
+        assert order[1:] == list(VALID_MOODS)
+
+    def test_a_failing_mood_warns_but_does_not_stop_the_run(self, tmp_path):
+        """Criterion 3: one erroring mood leaves the other five in the report."""
+
+        def fake_mood(mood, dry_run=False):
+            if mood == "focus":
+                return {"error": "lastfm_down", "details": "API down"}
+            return _mood_result(mood, dry_run)
+
+        with patch(
+            "src.daemon.workflow.spotify_curator_generate_mood",
+            side_effect=fake_mood,
+        ):
+            result = run_weekly_digest(report_dir=tmp_path, dry_run=True)
+
+        meta = _read_meta(tmp_path, result)
+        assert len(meta["playlists"]) == 5
+        assert "focus" not in [p["mood"] for p in meta["playlists"]]
+        assert any("lastfm_down" in w for w in result["warnings"])
+
+    def test_a_mood_that_raises_warns_but_does_not_stop_the_run(self, tmp_path):
+        """A raised exception is handled like a returned error."""
+
+        def fake_mood(mood, dry_run=False):
+            if mood == "focus":
+                raise RuntimeError("lastfm exploded")
+            return _mood_result(mood, dry_run)
+
+        with patch(
+            "src.daemon.workflow.spotify_curator_generate_mood",
+            side_effect=fake_mood,
+        ):
+            result = run_weekly_digest(report_dir=tmp_path, dry_run=True)
+
+        meta = _read_meta(tmp_path, result)
+        assert len(meta["playlists"]) == 5
+        assert any("lastfm exploded" in w for w in result["warnings"])
+
+    def test_failing_refresh_falls_back_to_cached_profile(self, tmp_path):
+        """Criterion 4: refresh failure warns, still runs, never raises."""
+        with (
+            patch(
+                "src.daemon.workflow.spotify_curator_refresh_profile",
+                return_value={"error": "profile_build_failed", "details": "no auth"},
+            ),
+            patch(
+                "src.daemon.workflow.spotify_curator_generate_mood",
+                side_effect=_mood_result,
+            ),
+        ):
+            result = run_weekly_digest(report_dir=tmp_path)
+
+        assert result["finished_at"] is not None
+        assert any("profile" in w.lower() for w in result["warnings"])
+        assert result["profile_refreshed"] is False
+        assert len(_read_meta(tmp_path, result)["playlists"]) == 6
+
+    def test_refresh_that_raises_falls_back_to_cached_profile(self, tmp_path):
+        """A raised refresh exception is a warning, not a failed run."""
+        with (
+            patch(
+                "src.daemon.workflow.spotify_curator_refresh_profile",
+                side_effect=RuntimeError("spotify down"),
+            ),
+            patch(
+                "src.daemon.workflow.spotify_curator_generate_mood",
+                side_effect=_mood_result,
+            ),
+        ):
+            result = run_weekly_digest(report_dir=tmp_path)
+
+        assert result["finished_at"] is not None
+        assert any("spotify down" in w for w in result["warnings"])
+        assert len(_read_meta(tmp_path, result)["playlists"]) == 6
+
+    def test_written_run_is_readable_by_get_reports(self, tmp_path, monkeypatch):
+        """Criterion 5: get_reports sees the run; mood_filter narrows to one playlist."""
+        with patch(
+            "src.daemon.workflow.spotify_curator_generate_mood",
+            side_effect=_mood_result,
+        ):
+            run_weekly_digest(report_dir=tmp_path / "reports", dry_run=True)
+
+        monkeypatch.setattr("src.config.DATA_DIR", tmp_path)
+        all_runs = spotify_curator_get_reports()
+        assert len(all_runs["runs"]) == 1
+        assert len(all_runs["runs"][0]["playlists"]) == 6
+
+        focus = spotify_curator_get_reports(mood_filter="focus")
+        assert len(focus["runs"]) == 1
+        assert [p["mood"] for p in focus["runs"][0]["playlists"]] == ["focus"]
+
+    def test_stub_warnings_are_gone(self, tmp_path):
+        """Criterion 7: no 'not implemented' / 'pipeline partial' stub messages."""
+        with patch(
+            "src.daemon.workflow.spotify_curator_generate_mood",
+            side_effect=_mood_result,
+        ):
+            result = run_weekly_digest(report_dir=tmp_path, dry_run=True)
+
+        warnings = " ".join(result["warnings"]).lower()
+        for phrase in ("not yet implemented", "pipeline partial", "skipped in dry_run"):
+            assert phrase not in warnings
 
     def test_unique_run_id_per_run(self, tmp_path):
-        r1 = run_weekly_digest(report_dir=tmp_path, dry_run=True)
-        time.sleep(0.001)  # ensure different timestamp
-        r2 = run_weekly_digest(report_dir=tmp_path, dry_run=True)
+        with patch(
+            "src.daemon.workflow.spotify_curator_generate_mood",
+            side_effect=_mood_result,
+        ):
+            r1 = run_weekly_digest(report_dir=tmp_path, dry_run=True)
+            time.sleep(0.001)  # ensure different timestamp
+            r2 = run_weekly_digest(report_dir=tmp_path, dry_run=True)
         assert r1["run_id"] != r2["run_id"]
 
 
