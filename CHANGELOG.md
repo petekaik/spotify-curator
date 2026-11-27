@@ -7,6 +7,8 @@ matching section below as a GitHub release.
 ## [Unreleased]
 
 ### Added
+- `curator-devops` Hermes skill and [docs/AGENT_ROLES.md](docs/AGENT_ROLES.md): Ollama-backed
+  agents do curator, DevOps and feature work; Claude reviews and steers; humans merge and release.
 - Ranker evaluation harness (`python -m evals.harness`): runs the real ranker on a frozen snapshot
   of real Last.fm data, gates four quality metrics against a committed baseline, checks that the
   tuning knobs do what they claim, and writes [evals/REPORT.md](evals/REPORT.md). Runs in CI.
